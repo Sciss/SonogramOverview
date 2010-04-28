@@ -1,6 +1,6 @@
 ==== SonogramOverview ====
 
-(C)opyright 2010 Hanns Holger is covered by the GNU GPL v2 (see License folder)
+(C)opyright 2010 Hanns Holger Rutz. All rights reserved. Code is covered by the GNU GPL v2 (see License folder)
 
 Dependancies:
 	- ScissLib ( http://sourceforge.net/projects/scisslib )
