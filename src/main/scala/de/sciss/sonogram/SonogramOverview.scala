@@ -56,7 +56,7 @@ private[ sonogram ] object SonogramSpec {
 }
 
 /**
- *    @version 0.11  28-Mar-10
+ *    @version 0.12, 06-May-10
  */
 private[ sonogram ] case class SonogramSpec( sampleRate: Double, minFreq: Float, maxFreq: Float,
                          bandsPerOct: Int, maxTimeRes: Float, maxFFTSize: Int, stepSize: Int ) {
@@ -79,7 +79,7 @@ private[ sonogram ] class SonogramDecimSpec( val offset: Long, val numWindows: L
 }
 
 object SonogramOverview {
-   val version = 0.11
+   val version = 0.12
    var verbose = false
    private lazy val log10 = new FastLog( 10, 11 )
 }

@@ -1,0 +1,24 @@
+h2. SonogramOverview ==<small>-- version 0.12 (built 06-may-10) --</small>==
+
+h3. statement
+
+An offline sonogram swing component for Scala or Java. (C)opyright 2010 by Hanns Holger Rutz. All rights reserved. It is released under the "GNU General Public License":http://github.com/Sciss/SonogramOverview/blob/master/licenses/SonogramOverview-License.txt and comes with absolutely no warranties. To contact the author, send an email to @contact at sciss.de@. SonogramOverview is based on the @AudioFile@ class of "ScissLib":http://sourceforge.net/projects/scisslib/ and the Constant-Q spectral transform of "ScissDSP":http://github.com/Sciss/ScissDSP .
+
+h3. requirements / installation
+
+Compiles against Scala 2.8.0.RC1 and Java 1.6. The repository contains a project file for Intellij IDEA 9 CE, and project files for sbt. Targets for sbt:
+
+* @clean@
+* @compile@
+* @doc@
+* @package@
+* @run@
+
+The dependancies currently need to be installed manually. Your @lib@ folder should contain
+
+* @ScissLib.jar@
+* @ScissDSP.jar@
+
+h3. download
+
+The current version can be downloaded from "github.com/Sciss/SonogramOverview":http://github.com/Sciss/SonogramOverview
