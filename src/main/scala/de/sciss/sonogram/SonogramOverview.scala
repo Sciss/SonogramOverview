@@ -79,7 +79,11 @@ private[ sonogram ] class SonogramDecimSpec( val offset: Long, val numWindows: L
 }
 
 object SonogramOverview {
-   val version = 0.12
+   val name          = "SonogramOverview"
+   val version       = 0.14
+   val copyright     = "(C)opyright 2004-2010 Hanns Holger Rutz"
+   def versionString = (version + 0.001).toString.substring( 0, 4 )
+
    var verbose = false
    private lazy val log10 = new FastLog( 10, 11 )
 }
