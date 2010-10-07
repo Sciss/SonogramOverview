@@ -37,7 +37,7 @@ import javax.swing.{ SwingWorker }
 import collection.immutable.{ Vector }
 import math._
 import de.sciss.dsp.{ ConstQ, FastLog }
-import de.sciss.io.{ AudioFile }
+import de.sciss.synth.io.AudioFile
 
 private[ sonogram ] object SonogramSpec {
    def decode( dis: DataInputStream ) : Option[ SonogramSpec ] = {
@@ -80,7 +80,7 @@ private[ sonogram ] class SonogramDecimSpec( val offset: Long, val numWindows: L
 
 object SonogramOverview {
    val name          = "SonogramOverview"
-   val version       = 0.14
+   val version       = 0.15
    val copyright     = "(C)opyright 2004-2010 Hanns Holger Rutz"
    def versionString = (version + 0.001).toString.substring( 0, 4 )
 
@@ -134,7 +134,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
    // caller must have sync
    private def seekWindow( decim: SonogramDecimSpec, idx: Long ) {
       val framePos = idx * numKernels + decim.offset
-      if( /* (decim.windowsReady > 0L) && */ (decimAF.getFramePosition != framePos) ) {
+      if( /* (decim.windowsReady > 0L) && */ (decimAF.framePosition != framePos) ) {
          decimAF.seekFrame( framePos )
       }
    }
@@ -245,7 +245,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
       val fftSize = constQ.getFFTSize
       val t1 = System.currentTimeMillis
       try {
-         val af = AudioFile.openAsRead( fileSpec.audioPath )
+         val af = AudioFile.openRead( fileSpec.audioPath )
          try {
             primaryRender( ws, constQ, af )
          }
@@ -263,7 +263,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
          secondaryRender( ws, pair.head, pair.last )
 //         if( verbose ) println( "finished " + pair.head.totalDecim )
       })
-      decimAF.flush()
+      decimAF.flush
       val t3 = System.currentTimeMillis
       if( verbose ) println( "primary : secondary ratio = " + (t2 - t1).toDouble / (t3 - t2) )
    }
@@ -367,7 +367,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
          disposed = true
          listeners = Vector.empty
          mgr.releaseSonoImage( imgSpec )
-         decimAF.cleanUp()  // XXX delete?
+         decimAF.cleanUp  // XXX delete?
       }
    }
 
