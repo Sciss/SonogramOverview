@@ -1,4 +1,4 @@
-h2. SonogramOverview ==<small>-- version 0.12 (built 06-may-10) --</small>==
+h2. SonogramOverview ==<small>-- version 0.15 (built 07-oct-10) --</small>==
 
 h3. statement
 
@@ -14,10 +14,7 @@ Compiles against Scala 2.8.0 and Java 1.6. The repository contains a project fil
 * @package@
 * @run@
 
-The dependancies currently need to be installed manually. Your @lib@ folder should contain
-
-* @ScissLib.jar@
-* @ScissDSP.jar@
+Run an initial @sbt update@ to install the depenancies. ScalaAudioFile must have been previously locally published using @sbt publish-local@ from its main folder.
 
 h3. download
 

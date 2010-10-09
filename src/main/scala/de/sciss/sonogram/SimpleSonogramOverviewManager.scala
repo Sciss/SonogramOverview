@@ -28,15 +28,16 @@
 
 package de.sciss.sonogram
 
-import de.sciss.io.CacheManager
+import java.io.File
 
 class SimpleSonogramOverviewManager extends SonogramOverviewManager {
-   val fileCache = {
-      val cm = new CacheManager
-      cm.setFolderAndCapacity( System.getProperty( "java.io.tmpdir" ), 50 )
-      cm.setActive( true )
-      cm
-   }
+//   val fileCache = {
+//      val cm = new CacheManager
+//      cm.setFolderAndCapacity( System.getProperty( "java.io.tmpdir" ), 50 )
+//      cm.setActive( true )
+//      cm
+//   }
+   protected def createCacheFileName( path : File ) = File.createTempFile( "sono", ".tmp" )
 
    val appCode = "????"
 }

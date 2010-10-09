@@ -37,10 +37,10 @@ import javax.swing.{ SwingWorker }
 import collection.immutable.{ Queue }
 import math._
 import de.sciss.dsp.{ ConstQ }
-import de.sciss.io.{ AudioFile, AudioFileDescr, CacheManager }
+import de.sciss.synth.io.{SampleFormat, AudioFileType, AudioFileSpec, AudioFile}
 
 /**
- *    @version 0.11  28-Mar-10
+ *    @version 0.15  07-Oct-10
  */
 abstract class SonogramOverviewManager {
    mgr =>
@@ -49,7 +49,8 @@ abstract class SonogramOverviewManager {
 
    // ---- subclass must define these abstract methods ----
    def appCode: String // APPCODE  = "Ttm "
-   def fileCache: CacheManager
+//   def fileCache: CacheManager
+   protected def createCacheFileName( path: File ) : File
 
    private var constQCache    = Map[ SonogramSpec, ConstQCache ]()
    private var imageCache     = Map[ Dimension, ImageCache ]()
@@ -65,53 +66,56 @@ abstract class SonogramOverviewManager {
    @throws( classOf[ IOException ])
    def fromPath( path: File ) : SonogramOverview = {
       sync.synchronized {
-         val af            = AudioFile.openAsRead( path )
-         val afDescr       = af.getDescr
+         val af            = AudioFile.openRead( path )
+         val afDescr       = af.spec
          af.close // render loop will re-open it if necessary...
-         val sampleRate    = afDescr.rate
+         val sampleRate    = afDescr.sampleRate
          val stepSize      = max( 64, (sampleRate * 0.0116 + 0.5).toInt ) // 11.6ms spacing
          val sonoSpec      = SonogramSpec( sampleRate, 32, min( 16384, sampleRate / 2 ).toFloat, 24,
                                 (stepSize / sampleRate * 1000).toFloat, 4096, stepSize )
          val decim         = List( 1, 6, 6, 6, 6 )
-         val fileSpec      = new SonogramFileSpec( sonoSpec, afDescr.file.lastModified, afDescr.file,
-                             afDescr.length, afDescr.channels, sampleRate, decim )
-         val cachePath     = fileCache.createCacheFileName( path )
+         val fileSpec      = new SonogramFileSpec( sonoSpec, path.lastModified, path,
+                             afDescr.numFrames, afDescr.numChannels, sampleRate, decim )
+//         val cachePath     = fileCache.createCacheFileName( path )
+         val cachePath     = createCacheFileName( path )
 
          // try to retrieve existing overview file from cache
-         val decimAFO      = if( cachePath.isFile ) {
-            try {
-               val cacheAF    = AudioFile.openAsRead( cachePath )
-               try {
-                  cacheAF.readAppCode()
-                  val cacheDescr = cacheAF.getDescr
-                  val blob       = cacheDescr.getProperty( AudioFileDescr.KEY_APPCODE ).asInstanceOf[ Array[ Byte ]]
-                  if( (cacheDescr.appCode == appCode) && (blob != null) && (SonogramFileSpec.decode( blob ) == Some( fileSpec ))
-                      && (cacheDescr.length == fileSpec.expectedDecimNumFrames) ) {
-                     af.cleanUp // do not need it anymore for reading
-                     fileSpec.makeAllAvailable
-                     Some( cacheAF )
-                  } else {
-                     cacheAF.cleanUp
-                     None
-                  }
-               }
-               catch { case e: IOException => { cacheAF.cleanUp; None }}
-            }
-            catch { case e: IOException => { None }}
-         } else None
+//         val decimAFO      = if( cachePath.isFile ) {
+//            try {
+//               val cacheAF    = AudioFile.openRead( cachePath )
+//               try {
+//                  cacheAF.readAppCode()
+//                  val cacheDescr = cacheAF.spec
+//                  val blob       = cacheDescr.getProperty( AudioFileDescr.KEY_APPCODE ).asInstanceOf[ Array[ Byte ]]
+//                  if( (cacheDescr.appCode == appCode) && (blob != null) && (SonogramFileSpec.decode( blob ) == Some( fileSpec ))
+//                      && (cacheDescr.length == fileSpec.expectedDecimNumFrames) ) {
+//                     af.cleanUp // do not need it anymore for reading
+//                     fileSpec.makeAllAvailable
+//                     Some( cacheAF )
+//                  } else {
+//                     cacheAF.cleanUp
+//                     None
+//                  }
+//               }
+//               catch { case e: IOException => { cacheAF.cleanUp; None }}
+//            }
+//            catch { case e: IOException => { None }}
+//         } else None
+val decimAFO = None
 
          // on failure, create new cache file
          val decimAF = decimAFO getOrElse {
-            val d             = new AudioFileDescr()
-            d.file            = cachePath
-            d.`type`          = AudioFileDescr.TYPE_AIFF
-            d.channels        = afDescr.channels
-            d.rate            = afDescr.rate
-            d.bitsPerSample   = 32  // XXX really?
-            d.sampleFormat    = AudioFileDescr.FORMAT_FLOAT
-            d.appCode         = appCode
-            d.setProperty( AudioFileDescr.KEY_APPCODE, fileSpec.encode )
-            AudioFile.openAsWrite( d ) // XXX eventually should use shared buffer!!
+//            val d             = new AudioFileDescr()
+//            d.file            = cachePath
+//            d.`type`          = AudioFileDescr.TYPE_AIFF
+//            d.channels        = afDescr.channels
+//            d.rate            = afDescr.rate
+//            d.bitsPerSample   = 32  // XXX really?
+//            d.sampleFormat    = AudioFileDescr.FORMAT_FLOAT
+//            d.appCode         = appCode
+//            d.setProperty( AudioFileDescr.KEY_APPCODE, fileSpec.encode )
+            val d = AudioFileSpec( AudioFileType.AIFF, SampleFormat.Float, afDescr.numChannels, afDescr.sampleRate )
+            AudioFile.openWrite( cachePath, d ) // XXX eventually should use shared buffer!!
          }
 
          val so = new SonogramOverview( mgr, fileSpec, decimAF )
