@@ -2,7 +2,7 @@
  *  SonogramOverview.scala
  *  (SonogramOverview)
  *
- *  Copyright (c) 2004-2010 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2004-2011 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is free software; you can redistribute it and/or
  *	modify it under the terms of the GNU General Public License
@@ -80,8 +80,8 @@ private[ sonogram ] class SonogramDecimSpec( val offset: Long, val numWindows: L
 
 object SonogramOverview {
    val name          = "SonogramOverview"
-   val version       = 0.15
-   val copyright     = "(C)opyright 2004-2010 Hanns Holger Rutz"
+   val version       = 0.16
+   val copyright     = "(C)opyright 2004-2011 Hanns Holger Rutz"
    def versionString = (version + 0.001).toString.substring( 0, 4 )
 
    var verbose = false
@@ -94,11 +94,11 @@ extends SwingWorker[ Unit, Unit ] {
       try {
          sono.render( this )
       }
-      catch { case e => e.printStackTrace }
+      catch { case e => e.printStackTrace() }
    }
 
-   override protected def done {
-      sono.dispatchComplete
+   override protected def done() {
+      sono.dispatchComplete()
    }
 }
 
@@ -115,7 +115,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
    private val numKernels        = fileSpec.sono.numKernels
    private val imgSpec           = SonogramImageSpec( numChannels, new Dimension( 128, numKernels ))
    private val sonoImg           = mgr.allocateSonoImage( imgSpec )
-   private val imgData           = sonoImg.img.getRaster.getDataBuffer.asInstanceOf[ DataBufferInt ].getData()
+   private val imgData           = sonoImg.img.getRaster.getDataBuffer.asInstanceOf[ DataBufferInt ].getData
    private var listeners         = Vector[ AnyRef => Unit ]()
 
    def addListener( l: AnyRef => Unit ) {
@@ -126,7 +126,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
       listeners = listeners.filter( _ != l )
    }
 
-   private[ sonogram ] def dispatchComplete {
+   private[ sonogram ] def dispatchComplete() {
       val change = OverviewComplete( this )
       listeners.foreach( _.apply( change ))
    }
@@ -242,7 +242,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
 
    private[ sonogram ] def render( ws: WorkingSonogram ) {
       val constQ = mgr.allocateConstQ( fileSpec.sono )
-      val fftSize = constQ.getFFTSize
+//      val fftSize = constQ.getFFTSize
       val t1 = System.currentTimeMillis
       try {
          val af = AudioFile.openRead( fileSpec.audioPath )
@@ -362,7 +362,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
    }
 
    private var disposed = false
-   def dispose {
+   def dispose() {
       if( !disposed ) {
          disposed = true
          listeners = Vector.empty
