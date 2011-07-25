@@ -39,7 +39,7 @@ object Main extends Runnable {
       EventQueue.invokeLater( this )
    }
 
-   def run {
+   def run() {
       val f = new JFrame()
       val cp = f.getContentPane
 
@@ -76,7 +76,7 @@ object Main extends Runnable {
       }
       catch {
          case e => {
-            e.printStackTrace
+            e.printStackTrace()
             System.exit( 1 )
          }
       }
