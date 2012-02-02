@@ -2,7 +2,7 @@
  *  SonogramOverview.scala
  *  (SonogramOverview)
  *
- *  Copyright (c) 2004-2011 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2012 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is free software; you can redistribute it and/or
  *	modify it under the terms of the GNU General Public License
@@ -21,9 +21,6 @@
  *
  *	For further information, please contact Hanns Holger Rutz at
  *	contact@sciss.de
- *
- *
- *  Changelog:
  *    28-Mar-10   extracted from Kontur. Removing app package dependancy
  */
 
@@ -80,8 +77,8 @@ private[ sonogram ] class SonogramDecimSpec( val offset: Long, val numWindows: L
 
 object SonogramOverview {
    val name          = "SonogramOverview"
-   val version       = 0.16
-   val copyright     = "(C)opyright 2004-2011 Hanns Holger Rutz"
+   val version       = 0.17
+   val copyright     = "(C)opyright 2004-2012 Hanns Holger Rutz"
    def versionString = (version + 0.001).toString.substring( 0, 4 )
 
    var verbose = false
@@ -134,8 +131,8 @@ class SonogramOverview @throws( classOf[ IOException ]) (
    // caller must have sync
    private def seekWindow( decim: SonogramDecimSpec, idx: Long ) {
       val framePos = idx * numKernels + decim.offset
-      if( /* (decim.windowsReady > 0L) && */ (decimAF.framePosition != framePos) ) {
-         decimAF.seekFrame( framePos )
+      if( /* (decim.windowsReady > 0L) && */ (decimAF.position != framePos) ) {
+         decimAF.seek( framePos )
       }
    }
 
@@ -184,7 +181,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
             while( windowsRead < numWindows ) {
                val chunkLen2 = min( imgW - xReset, numWindows - windowsRead ).toInt
                val chunkLen = chunkLen2 + xReset
-               decimAF.readFrames( sonoImg.fileBuf, 0, chunkLen2 * numKernels )
+               decimAF.read( sonoImg.fileBuf, 0, chunkLen2 * numKernels )
                windowsRead += chunkLen2
                if( firstPass ) {
                   firstPass = false
@@ -283,7 +280,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
 
       { var step = 0; while( step < out.numWindows && !ws.isCancelled ) {
          val chunkLen = min( inLen, numFrames - framesRead ).toInt
-         in.readFrames( inBuf, inOff, chunkLen )
+         in.read( inBuf, inOff, chunkLen )
          framesRead += chunkLen
          if( chunkLen < inLen ) {
             { var ch = 0; while( ch < numChannels ) {
@@ -297,7 +294,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
 
          sync.synchronized {
             seekWindow( out, out.windowsReady )
-            decimAF.writeFrames( outBuf, 0, numKernels )
+            decimAF.write( outBuf, 0, numKernels )
             out.windowsReady += 1
          }
 
@@ -329,7 +326,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
          val chunkLen = min( inLen, (in.numWindows - windowsRead) * numKernels ).toInt
          sync.synchronized {
             seekWindow( in, windowsRead )
-            decimAF.readFrames( buf, inOff, chunkLen )
+            decimAF.read( buf, inOff, chunkLen )
          }
          windowsRead += chunkLen / numKernels
          if( chunkLen < inLen ) {
@@ -350,7 +347,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
 
          sync.synchronized {
             seekWindow( out, out.windowsReady )
-            decimAF.writeFrames( buf, 0, numKernels )
+            decimAF.write( buf, 0, numKernels )
             out.windowsReady += 1
          }
 
@@ -367,7 +364,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
          disposed = true
          listeners = Vector.empty
          mgr.releaseSonoImage( imgSpec )
-         decimAF.cleanUp  // XXX delete?
+         decimAF.cleanUp()  // XXX delete?
       }
    }
 
