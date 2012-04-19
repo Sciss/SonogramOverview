@@ -6,7 +6,7 @@ An offline sonogram swing component for Scala or Java. (C)opyright 2010&ndash;20
 
 ### requirements / installation
 
-Compiles against Scala 2.9.1 and Java 1.6. Builds with xsbt (sbt 0.11). A demo can be launched via `sbt run`.
+Compiles against Scala 2.9.2 and Java 1.6. Builds with xsbt (sbt 0.11). A demo can be launched via `sbt run`.
 
 To use this library in your project:
 
@@ -18,7 +18,7 @@ To develop the library under IntelliJ IDEA, you can set up a project with the sb
 
     resolvers += "sbt-idea-repo" at "http://mpeltonen.github.com/maven/"
 
-    addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "0.11.0")
+    addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.0.0")
 
 Then to create the IDEA project, run the following two commands from the xsbt shell:
 

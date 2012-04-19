@@ -10,11 +10,11 @@ homepage := Some( url( "https://github.com/Sciss/SonogramOverview" ))
 
 licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
-scalaVersion := "2.9.1"
+scalaVersion := "2.9.2"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "scalaaudiofile" % "0.20",
-   "de.sciss" % "scissdsp" % "0.11" from "http://scala-tools.org/repo-releases/de/sciss/scissdsp/0.11/scissdsp-0.11.jar"
+   "de.sciss" % "scissdsp" % "0.11" // from "http://scala-tools.org/repo-releases/de/sciss/scissdsp/0.11/scissdsp-0.11.jar"
 )
 
 retrieveManaged := true
@@ -23,23 +23,32 @@ scalacOptions ++= Seq( "-deprecation", "-unchecked" )
 
 // ---- publishing ----
 
+publishMavenStyle := true
+
 publishTo <<= version { (v: String) =>
-   Some( "Scala Tools Nexus" at "http://nexus.scala-tools.org/content/repositories/".+(
-      if( v.endsWith( "-SNAPSHOT")) "snapshots/" else "releases/"
-   ))
+   Some( if( v.endsWith( "-SNAPSHOT" ))
+      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+   else
+      "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+   )
 }
 
+publishArtifact in Test := false
+
+pomIncludeRepository := { _ => false }
+
 pomExtra :=
-<licenses>
-  <license>
-    <name>GPL v2+</name>
-    <url>http://www.gnu.org/licenses/gpl-2.0.txt</url>
-    <distribution>repo</distribution>
-  </license>
-</licenses>
-
-credentials += Credentials(Path.userHome / ".ivy2" / ".credentials")
-
+<scm>
+  <url>git@github.com:Sciss/SonogramOverview.git</url>
+  <connection>scm:git:git@github.com:Sciss/SonogramOverview.git</connection>
+</scm>
+<developers>
+   <developer>
+      <id>sciss</id>
+      <name>Hanns Holger Rutz</name>
+      <url>http://www.sciss.de</url>
+   </developer>
+</developers>
 
 // ---- ls.implicit.ly ----
 
