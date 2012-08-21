@@ -1,6 +1,6 @@
 name := "SonogramOverview"
 
-version := "0.17"
+version := "1.0.0-SNAPSHOT"
 
 organization := "de.sciss"
 
@@ -8,18 +8,31 @@ description := "Sonogram view component for Scala/Swing, calculating offline fro
 
 homepage := Some( url( "https://github.com/Sciss/SonogramOverview" ))
 
-licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
+licenses := Seq( "LGPL v2+" -> url( "http://www.gnu.org/licenses/lgpl.txt" ))
 
 scalaVersion := "2.9.2"
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "scalaaudiofile" % "0.20",
-   "de.sciss" % "scissdsp" % "0.11" // from "http://scala-tools.org/repo-releases/de/sciss/scissdsp/0.11/scissdsp-0.11.jar"
+   "de.sciss" %% "scissdsp" % "1.0.+"
 )
 
 retrieveManaged := true
 
 scalacOptions ++= Seq( "-deprecation", "-unchecked" )
+
+// ---- build info ----
+
+buildInfoSettings
+
+sourceGenerators in Compile <+= buildInfo
+
+buildInfoKeys := Seq( name, organization, version, scalaVersion, description,
+   BuildInfoKey.map( homepage ) { case (k, opt) => k -> opt.get },
+   BuildInfoKey.map( licenses ) { case (_, Seq( (lic, _) )) => "license" -> lic }
+)
+
+buildInfoPackage := "de.sciss.sonogram"
 
 // ---- publishing ----
 

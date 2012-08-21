@@ -122,10 +122,10 @@ val decimAFO = None
       }
    }
 
-   private[ sonogram ] def allocateConstQ( spec: SonogramSpec, createKernels: Boolean = true ) : ConstQ = {
+   private[ sonogram ] def allocateConstQ( spec: SonogramSpec /*, createKernels: Boolean = true */ ) : ConstQ = {
       sync.synchronized {
          val entry = constQCache.get( spec ) getOrElse
-            new ConstQCache( constQFromSpec( spec, createKernels ))
+            new ConstQCache( constQFromSpec( spec /*, createKernels */))
          entry.useCount += 1
          constQCache += (spec -> entry)  // in case it was newly created
          entry.constQ
@@ -205,17 +205,17 @@ val decimAFO = None
 //                    constQ.getBandsPerOct, constQ.getMaxTimeRes,
 //                    constQ.getMaxFFTSize )
 
-   private[this] def constQFromSpec( spec: SonogramSpec, createKernels: Boolean ) : ConstQ = {
-   	val constQ  = new ConstQ
-		constQ.setSampleRate( spec.sampleRate )
-      constQ.setMinFreq( spec.minFreq )
-      constQ.setMaxFreq( spec.maxFreq )
-      constQ.setBandsPerOct( spec.bandsPerOct )
-      constQ.setMaxTimeRes( spec.maxTimeRes )
-      constQ.setMaxFFTSize( spec.maxFFTSize )
+   private[this] def constQFromSpec( spec: SonogramSpec /*, createKernels: Boolean */) : ConstQ = {
+   	val cfg  = ConstQ.Config()
+      cfg.sampleRate = spec.sampleRate
+      cfg.minFreq    = spec.minFreq
+      cfg.maxFreq    = spec.maxFreq
+      cfg.bandsPerOct= spec.bandsPerOct
+      cfg.maxTimeRes = spec.maxTimeRes
+      cfg.maxFFTSize = spec.maxFFTSize
 //		println( "Creating ConstQ Kernels..." )
-		if( createKernels ) constQ.createKernels()
-      constQ
+//		if( createKernels ) constQ.createKernels()
+      ConstQ( cfg )
    }
 
    private[this] var workerQueue = Queue[ WorkingSonogram ]()

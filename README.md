@@ -6,11 +6,11 @@ An offline sonogram swing component for Scala or Java. (C)opyright 2010&ndash;20
 
 ### requirements / installation
 
-Compiles against Scala 2.9.2 and Java 1.6. Builds with xsbt (sbt 0.11). A demo can be launched via `sbt run`.
+Compiles against Scala 2.9.2 and Java 1.6. Builds with sbt 0.12.0. A demo can be launched via `sbt run`.
 
 To use this library in your project:
 
-    "de.sciss" %% "sonogramoverview" % "0.17"
+    "de.sciss" %% "sonogramoverview" % "1.0.+"
 
 ### creating an IntelliJ IDEA project
 
@@ -20,10 +20,7 @@ To develop the library under IntelliJ IDEA, you can set up a project with the sb
 
     addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.0.0")
 
-Then to create the IDEA project, run the following two commands from the xsbt shell:
-
-    > set ideaProjectName := "SonogramOverview"
-    > gen-idea
+Then to create the IDEA project, run `sbt gen-idea`.
 
 ### download
 

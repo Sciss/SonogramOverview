@@ -76,13 +76,13 @@ private[ sonogram ] class SonogramDecimSpec( val offset: Long, val numWindows: L
 }
 
 object SonogramOverview {
-   val name          = "SonogramOverview"
-   val version       = 0.17
-   val copyright     = "(C)opyright 2004-2012 Hanns Holger Rutz"
-   def versionString = (version + 0.001).toString.substring( 0, 4 )
+//   val name          = "SonogramOverview"
+//   val version       = 0.17
+//   val copyright     = "(C)opyright 2004-2012 Hanns Holger Rutz"
+//   def versionString = (version + 0.001).toString.substring( 0, 4 )
 
    var verbose = false
-   private lazy val log10 = new FastLog( 10, 11 )
+   private lazy val log10 = FastLog( 10, 11 )
 }
 
 private[ sonogram ] class WorkingSonogram( sono: SonogramOverview )
@@ -266,7 +266,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
    }
 
    private def primaryRender( ws: WorkingSonogram, constQ: ConstQ, in: AudioFile ) {
-      val fftSize       = constQ.getFFTSize
+      val fftSize       = constQ.fftSize
       val stepSize      = fileSpec.sono.stepSize
       val inBuf         = Array.ofDim[ Float ]( numChannels, fftSize )
       val outBuf        = Array.ofDim[ Float ]( numChannels, numKernels )
