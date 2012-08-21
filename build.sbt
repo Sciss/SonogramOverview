@@ -1,6 +1,6 @@
 name := "SonogramOverview"
 
-version := "1.0.0-SNAPSHOT"
+version := "1.0.0"
 
 organization := "de.sciss"
 
@@ -8,9 +8,11 @@ description := "Sonogram view component for Scala/Swing, calculating offline fro
 
 homepage := Some( url( "https://github.com/Sciss/SonogramOverview" ))
 
-licenses := Seq( "LGPL v2+" -> url( "http://www.gnu.org/licenses/lgpl.txt" ))
+licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
 scalaVersion := "2.9.2"
+
+crossScalaVersions := Seq( "2.10.0-M7", "2.9.2" )
 
 libraryDependencies ++= Seq(
    "de.sciss" %% "scalaaudiofile" % "0.20",

@@ -28,10 +28,12 @@ package de.sciss.sonogram
 import java.awt.{ BorderLayout, EventQueue, FileDialog }
 import java.io.File
 import javax.swing.{ JFrame, JSlider, SwingConstants, WindowConstants }
-import de.sciss.dsp.MathUtil
 import javax.swing.event.{ ChangeEvent, ChangeListener }
+import de.sciss.dsp.Util
 
 object Demo extends App with Runnable {
+   import Util.dbamp
+
    EventQueue.invokeLater( this )
 
    def run() {
@@ -57,7 +59,7 @@ object Demo extends App with Runnable {
          ggBoost.addChangeListener( new ChangeListener {
             def stateChanged( e: ChangeEvent ) {
 //               if( !ggBoost.getValueIsAdjusting ) {
-                  view.boost = MathUtil.dbamp( ggBoost.getValue * 0.1 ).toFloat
+                  view.boost = dbamp( ggBoost.getValue * 0.1 ).toFloat
 //               }
             }
          })

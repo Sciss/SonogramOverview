@@ -289,7 +289,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
          }
          { var ch = 0; while( ch < numChannels ) {
             // input, inOff, inLen, output, outOff
-            constQ.transform( inBuf( ch ), 0, fftSize, outBuf( ch ), 0 )
+            constQ.transform( inBuf( ch ), fftSize, outBuf( ch ), 0, 0 )
          ch += 1 }}
 
          sync.synchronized {
