@@ -1,6 +1,6 @@
 name := "SonogramOverview"
 
-version := "1.0.0"
+version := "1.1.0"
 
 organization := "de.sciss"
 
@@ -12,11 +12,11 @@ licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
 
 scalaVersion := "2.9.2"
 
-crossScalaVersions := Seq( "2.10.0-M7", "2.9.2" )
+// crossScalaVersions := Seq( "2.10.0-M7", "2.9.2" )
 
 libraryDependencies ++= Seq(
-   "de.sciss" %% "scalaaudiofile" % "0.20",
-   "de.sciss" %% "scissdsp" % "1.0.+"
+   "de.sciss" %% "scalaaudiofile" % "1.0.+",
+   "de.sciss" %% "scissdsp" % "1.1.+"
 )
 
 retrieveManaged := true

@@ -10,7 +10,7 @@ Compiles against Scala 2.9.2 and Java 1.6. Builds with sbt 0.12.0. A demo can be
 
 To use this library in your project:
 
-    "de.sciss" %% "sonogramoverview" % "1.0.+"
+    "de.sciss" %% "sonogramoverview" % "1.1.+"
 
 ### creating an IntelliJ IDEA project
 
