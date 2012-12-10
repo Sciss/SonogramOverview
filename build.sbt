@@ -1,6 +1,6 @@
 name := "SonogramOverview"
 
-version := "1.1.0"
+version := "1.2.0"
 
 organization := "de.sciss"
 
@@ -15,7 +15,7 @@ scalaVersion := "2.9.2"
 // crossScalaVersions := Seq( "2.10.0-M7", "2.9.2" )
 
 libraryDependencies ++= Seq(
-   "de.sciss" %% "scalaaudiofile" % "1.0.+",
+   "de.sciss" %% "scalaaudiofile" % "1.1.+",
    "de.sciss" %% "scissdsp" % "1.1.+"
 )
 

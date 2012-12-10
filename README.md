@@ -10,15 +10,13 @@ Compiles against Scala 2.9.2 and Java 1.6. Builds with sbt 0.12.0. A demo can be
 
 To use this library in your project:
 
-    "de.sciss" %% "sonogramoverview" % "1.1.+"
+    "de.sciss" %% "sonogramoverview" % "1.2.+"
 
 ### creating an IntelliJ IDEA project
 
 To develop the library under IntelliJ IDEA, you can set up a project with the sbt-idea plugin. If you haven't globally installed the sbt-idea plugin yet, create the following contents in `~/.sbt/plugins/build.sbt`:
 
-    resolvers += "sbt-idea-repo" at "http://mpeltonen.github.com/maven/"
-
-    addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.0.0")
+    addSbtPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0")
 
 Then to create the IDEA project, run `sbt gen-idea`.
 
