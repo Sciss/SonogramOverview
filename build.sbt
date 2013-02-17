@@ -1,27 +1,28 @@
 name := "SonogramOverview"
 
-version := "1.2.0"
+version := "1.3.0"
 
 organization := "de.sciss"
 
 description := "Sonogram view component for Scala/Swing, calculating offline from audio files"
 
-homepage := Some( url( "https://github.com/Sciss/SonogramOverview" ))
+homepage <<= name { n => Some(url("https://github.com/Sciss/" + n)) }
 
-licenses := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
+licenses := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.0"
 
 // crossScalaVersions := Seq( "2.10.0-M7", "2.9.2" )
 
 libraryDependencies ++= Seq(
-   "de.sciss" %% "scalaaudiofile" % "1.1.+",
-   "de.sciss" %% "scissdsp" % "1.1.+"
+  "de.sciss" %% "scalaaudiofile" % "1.2.+",
+  "de.sciss" % "intensitypalette" % "1.0.0",
+  "de.sciss" %% "scissdsp" % "1.1.+"
 )
 
 retrieveManaged := true
 
-scalacOptions ++= Seq( "-deprecation", "-unchecked" )
+scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature")
 
 // ---- build info ----
 
@@ -29,9 +30,9 @@ buildInfoSettings
 
 sourceGenerators in Compile <+= buildInfo
 
-buildInfoKeys := Seq( name, organization, version, scalaVersion, description,
-   BuildInfoKey.map( homepage ) { case (k, opt) => k -> opt.get },
-   BuildInfoKey.map( licenses ) { case (_, Seq( (lic, _) )) => "license" -> lic }
+buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
+  BuildInfoKey.map(homepage) { case (k, opt)           => k -> opt.get },
+  BuildInfoKey.map(licenses) { case (_, Seq((lic, _))) => "license" -> lic }
 )
 
 buildInfoPackage := "de.sciss.sonogram"
@@ -41,7 +42,7 @@ buildInfoPackage := "de.sciss.sonogram"
 publishMavenStyle := true
 
 publishTo <<= version { (v: String) =>
-   Some( if( v.endsWith( "-SNAPSHOT" ))
+   Some(if (v endsWith "-SNAPSHOT")
       "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
    else
       "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
@@ -52,10 +53,10 @@ publishArtifact in Test := false
 
 pomIncludeRepository := { _ => false }
 
-pomExtra :=
+pomExtra <<= name { n =>
 <scm>
-  <url>git@github.com:Sciss/SonogramOverview.git</url>
-  <connection>scm:git:git@github.com:Sciss/SonogramOverview.git</connection>
+  <url>git@github.com:Sciss/{n}.git</url>
+  <connection>scm:git:git@github.com:Sciss/{n}.git</connection>
 </scm>
 <developers>
    <developer>
@@ -64,16 +65,14 @@ pomExtra :=
       <url>http://www.sciss.de</url>
    </developer>
 </developers>
+}
 
 // ---- ls.implicit.ly ----
 
-seq( lsSettings :_* )
+seq(lsSettings :_*)
 
-(LsKeys.tags in LsKeys.lsync) := Seq( "swing", "audio", "spectrum", "dsp", "sonogram" )
+(LsKeys.tags in LsKeys.lsync) := Seq("swing", "audio", "spectrum", "dsp", "sonogram")
 
-(LsKeys.ghUser in LsKeys.lsync) := Some( "Sciss" )
+(LsKeys.ghUser in LsKeys.lsync) := Some("Sciss")
 
-(LsKeys.ghRepo in LsKeys.lsync) := Some( "SonogramOverview" )
-
-// bug in ls -- doesn't find the licenses from global scope
-(licenses in LsKeys.lsync) := Seq( "GPL v2+" -> url( "http://www.gnu.org/licenses/gpl-2.0.txt" ))
+(LsKeys.ghRepo in LsKeys.lsync) <<= name(Some(_))

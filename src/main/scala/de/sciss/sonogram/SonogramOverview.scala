@@ -2,7 +2,7 @@
  *  SonogramOverview.scala
  *  (SonogramOverview)
  *
- *  Copyright (c) 2010-2012 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2013 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is free software; you can redistribute it and/or
  *	modify it under the terms of the GNU General Public License
@@ -26,81 +26,80 @@
 
 package de.sciss.sonogram
 
-import java.awt.{ Dimension, Graphics2D }
-import java.awt.image.{ BufferedImage, DataBufferInt }
-import java.io.{ DataInputStream, DataOutputStream, IOException }
-import java.util.{ Arrays }
-import javax.swing.{ SwingWorker }
-import collection.immutable.{ Vector }
+import java.awt.Graphics2D
+import java.awt.image.{BufferedImage, DataBufferInt}
+import java.io.{DataInputStream, DataOutputStream, IOException}
+import javax.swing.SwingWorker
 import math._
-import de.sciss.dsp.{ ConstQ, FastLog }
+import de.sciss.dsp.{ConstQ, FastLog}
 import de.sciss.synth.io.AudioFile
+import util.control.NonFatal
+import de.sciss.intensitypalette.IntensityPalette
+import java.{util => ju}
 
-private[ sonogram ] object SonogramSpec {
-   def decode( dis: DataInputStream ) : Option[ SonogramSpec ] = {
-      try {
-         val sampleRate    = dis.readDouble()
-         val minFreq       = dis.readFloat()
-         val maxFreq       = dis.readFloat()
-         val bandsPerOct   = dis.readInt()
-         val maxTimeRes    = dis.readFloat()
-         val maxFFTSize    = dis.readInt()
-         val stepSize      = dis.readInt()
-         Some( SonogramSpec( sampleRate, minFreq, maxFreq, bandsPerOct, maxTimeRes, maxFFTSize, stepSize ))
-      }
-      catch { case _ => None }
-   }
+private[sonogram] object SonogramSpec {
+  def decode(dis: DataInputStream): Option[SonogramSpec] = {
+    try {
+      val sampleRate  = dis.readDouble()
+      val minFreq     = dis.readFloat()
+      val maxFreq     = dis.readFloat()
+      val bandsPerOct = dis.readInt()
+      val maxTimeRes  = dis.readFloat()
+      val maxFFTSize  = dis.readInt()
+      val stepSize    = dis.readInt()
+      Some(SonogramSpec(sampleRate, minFreq, maxFreq, bandsPerOct, maxTimeRes, maxFFTSize, stepSize))
+    }
+    catch {
+      case NonFatal(_) => None
+    }
+  }
 }
 
-/**
- *    @version 0.12, 06-May-10
- */
-private[ sonogram ] case class SonogramSpec( sampleRate: Double, minFreq: Float, maxFreq: Float,
-                         bandsPerOct: Int, maxTimeRes: Float, maxFFTSize: Int, stepSize: Int ) {
+private[sonogram] case class SonogramSpec(sampleRate: Double, minFreq: Float, maxFreq: Float,
+                                          bandsPerOct: Int, maxTimeRes: Float, maxFFTSize: Int, stepSize: Int) {
 
-   val numKernels = ConstQ.getNumKernels( bandsPerOct, maxFreq, minFreq )
+  val numKernels = ConstQ.getNumKernels(bandsPerOct, maxFreq, minFreq)
 
-   def encode( dos: DataOutputStream ) {
-      dos.writeDouble( sampleRate )
-      dos.writeFloat( minFreq )
-      dos.writeFloat( maxFreq )
-      dos.writeInt( bandsPerOct )
-      dos.writeFloat( maxTimeRes )
-      dos.writeInt( maxFFTSize )
-      dos.writeInt( stepSize )
-   }
+  def encode(dos: DataOutputStream) {
+    dos.writeDouble(sampleRate)
+    dos.writeFloat(minFreq)
+    dos.writeFloat(maxFreq)
+    dos.writeInt(bandsPerOct)
+    dos.writeFloat(maxTimeRes)
+    dos.writeInt(maxFFTSize)
+    dos.writeInt(stepSize)
+  }
 }
 
-private[ sonogram ] class SonogramDecimSpec( val offset: Long, val numWindows: Long, val decimFactor: Int, val totalDecim: Int ) {
-   var windowsReady = 0L
+private[sonogram] final class SonogramDecimSpec(val offset: Long, val numWindows: Long, val decimFactor: Int,
+                                                val totalDecim: Int) {
+  var windowsReady = 0L
 }
 
 object SonogramOverview {
-//   val name          = "SonogramOverview"
-//   val version       = 0.17
-//   val copyright     = "(C)opyright 2004-2012 Hanns Holger Rutz"
-//   def versionString = (version + 0.001).toString.substring( 0, 4 )
-
-   var verbose = false
-   private lazy val log10 = FastLog( 10, 11 )
+  var verbose = false
+  private lazy val log10 = FastLog(10, 11)
 }
 
-private[ sonogram ] class WorkingSonogram( sono: SonogramOverview )
-extends SwingWorker[ Unit, Unit ] {
-   override protected def doInBackground() {
-      try {
-         sono.render( this )
-      }
-      catch { case e => e.printStackTrace() }
-   }
+private[sonogram] final class WorkingSonogram(sono: SonogramOverview)
+  extends SwingWorker[Unit, Unit] {
+  override protected def doInBackground() {
+    try {
+      sono.render(this)
+    }
+    catch {
+      case NonFatal(e) => e.printStackTrace()
+    }
+  }
 
-   override protected def done() {
-      sono.dispatchComplete()
-   }
+  override protected def done() {
+    sono.dispatchComplete()
+  }
 }
 
-private[ sonogram ] case class SonogramImageSpec( numChannels: Int, dim: Dimension )
-private[ sonogram ] case class SonogramImage( img: BufferedImage, fileBuf: Array[ Array[ Float ]])
+private[sonogram] final case class SonogramImageSpec(numChannels: Int, width: Int, height: Int)
+
+private[sonogram] final class SonogramImage(val img: BufferedImage, val fileBuf: Array[Array[Float]])
 
 class SonogramOverview @throws( classOf[ IOException ]) (
    mgr: SonogramOverviewManager, val fileSpec: SonogramFileSpec, decimAF: AudioFile ) {
@@ -110,7 +109,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
    private val sync              = new AnyRef
    private val numChannels       = fileSpec.numChannels
    private val numKernels        = fileSpec.sono.numKernels
-   private val imgSpec           = SonogramImageSpec( numChannels, new Dimension( 128, numKernels ))
+   private val imgSpec           = SonogramImageSpec(numChannels, width = 128, height = numKernels)
    private val sonoImg           = mgr.allocateSonoImage( imgSpec )
    private val imgData           = sonoImg.img.getRaster.getDataBuffer.asInstanceOf[ DataBufferInt ].getData
    private var listeners         = Vector[ AnyRef => Unit ]()
@@ -156,12 +155,12 @@ class SonogramOverview @throws( classOf[ IOException ]) (
       val stop          = ceil( spanStop / in.totalDecim ).toLong // XXX include startD % 1.0 ?
 
       var windowsRead   = 0L
-      val imgW          = imgSpec.dim.width
+      val imgW          = imgSpec.width
       val iOffStart     = (numVFull - 1) * imgW
       val l10           = log10
-      val c             = IntensityColorScheme.colors
+//      val c             = IntensityColorScheme.colors
 
-      val pixScale      = 1072f / 6 // 1072 / bels span
+      val pixScale      = 1f / 6 // 1072 / bels span
       val pixOff        = 6f // bels floor
       val iBuf          = imgData
 //      val numK          = numKernels
@@ -170,7 +169,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
       try {
          g2.translate( tx + transX, ty )
          g2.scale( scaleW, scaleH )
-         var xOff = 0; var yOff = 0; var fOff = 0; var iOff = 0;
+         var xOff = 0; var yOff = 0; var fOff = 0; var iOff = 0
          var x = 0; var v = 0; var i = 0; var sum = 0f
          var xReset = 0
          var firstPass = true
@@ -206,8 +205,8 @@ class SonogramOverview @throws( classOf[ IOException ]) (
                            fOff += 1; i += 1
                         }
                         val amp = ctrl.adjustGain( sum / vDecim, (iOff + xOff) / scaleW )
-                        iBuf( iOff ) = c( max( 0, min( 1072,
-                           ((l10.calc( max( 1.0e-9f, amp )) + pixOff) * pixScale).toInt )))
+                        iBuf( iOff ) = IntensityPalette.apply(
+                           (l10.calc( max( 1.0e-9f, amp )) + pixOff) * pixScale)
                         v += 1; iOff -= imgW
                      }
 /*
@@ -247,7 +246,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
             primaryRender( ws, constQ, af )
          }
          finally {
-            af.cleanUp
+            af.cleanUp()
          }
       }
       finally {
@@ -260,7 +259,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
          secondaryRender( ws, pair.head, pair.last )
 //         if( verbose ) println( "finished " + pair.head.totalDecim )
       })
-      decimAF.flush
+      decimAF.flush()
       val t3 = System.currentTimeMillis
       if( verbose ) println( "primary : secondary ratio = " + (t2 - t1).toDouble / (t3 - t2) )
    }
@@ -284,7 +283,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
          framesRead += chunkLen
          if( chunkLen < inLen ) {
             { var ch = 0; while( ch < numChannels ) {
-               Arrays.fill( inBuf( ch ), inOff + chunkLen, fftSize, 0f )
+               ju.Arrays.fill( inBuf( ch ), inOff + chunkLen, fftSize, 0f )
             ch += 1 }}
          }
          { var ch = 0; while( ch < numChannels ) {
@@ -331,7 +330,7 @@ class SonogramOverview @throws( classOf[ IOException ]) (
          windowsRead += chunkLen / numKernels
          if( chunkLen < inLen ) {
             { var ch = 0; while( ch < numChannels ) {
-               Arrays.fill( buf( ch ), inOff + chunkLen, bufSize, 0f )
+               ju.Arrays.fill( buf( ch ), inOff + chunkLen, bufSize, 0f )
             ch += 1 }}
          }
          { var ch = 0; while( ch < numChannels ) {

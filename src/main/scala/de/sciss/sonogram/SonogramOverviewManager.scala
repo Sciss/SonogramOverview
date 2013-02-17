@@ -2,7 +2,7 @@
  *  SonogramOverviewManager.scala
  *  (SonogramOverview)
  *
- *  Copyright (c) 2010-2012 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2013 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is free software; you can redistribute it and/or
  *	modify it under the terms of the GNU General Public License
@@ -26,19 +26,15 @@
 
 package de.sciss.sonogram
 
-import java.awt.{ Dimension }
-import java.awt.image.{ BufferedImage }
-import java.beans.{ PropertyChangeEvent, PropertyChangeListener }
-import java.io.{ File, IOException }
-import javax.swing.{ SwingWorker }
-import collection.immutable.{ Queue }
+import java.awt.image.BufferedImage
+import java.beans.{PropertyChangeEvent, PropertyChangeListener}
+import java.io.{File, IOException}
+import javax.swing.SwingWorker
+import collection.immutable.{Queue => IQueue}
 import math._
-import de.sciss.dsp.{ ConstQ }
+import de.sciss.dsp.ConstQ
 import de.sciss.synth.io.{SampleFormat, AudioFileType, AudioFileSpec, AudioFile}
 
-/**
- *    @version 0.15  07-Oct-10
- */
 abstract class SonogramOverviewManager {
    mgr =>
 
@@ -49,34 +45,28 @@ abstract class SonogramOverviewManager {
 //   def fileCache: CacheManager
    protected def createCacheFileName( path: File ) : File
 
-   private var constQCache    = Map[ SonogramSpec, ConstQCache ]()
-   private var imageCache     = Map[ Dimension, ImageCache ]()
-   private var fileBufCache   = Map[ SonogramImageSpec, FileBufCache ]()
-   private val sync           = new AnyRef
-//   private lazy val fileCache = {
-//      val app = AbstractApplication.getApplication
-//      new PrefCacheManager(
-//         app.getUserPrefs.node( PrefsUtil.NODE_IO ).node( PrefsUtil.NODE_SONACACHE ),
-//         true, new File( System.getProperty( "java.io.tmpdir" ), app.getName ), 10240 ) // XXX 10 GB
-//   }
+  private var constQCache   = Map[SonogramSpec, ConstQCache]()
+  private var imageCache    = Map[(Int, Int), ImageCache]()
+  private var fileBufCache  = Map[SonogramImageSpec, FileBufCache]()
+  private val sync          = new AnyRef
 
-   @throws( classOf[ IOException ])
-   def fromPath( path: File ) : SonogramOverview = {
-      sync.synchronized {
-         val af            = AudioFile.openRead( path )
-         val afDescr       = af.spec
-         af.close // render loop will re-open it if necessary...
-         val sampleRate    = afDescr.sampleRate
-         val stepSize      = max( 64, (sampleRate * 0.0116 + 0.5).toInt ) // 11.6ms spacing
-         val sonoSpec      = SonogramSpec( sampleRate, 32, min( 16384, sampleRate / 2 ).toFloat, 24,
-                                (stepSize / sampleRate * 1000).toFloat, 4096, stepSize )
-         val decim         = List( 1, 6, 6, 6, 6 )
-         val fileSpec      = new SonogramFileSpec( sonoSpec, path.lastModified, path,
-                             afDescr.numFrames, afDescr.numChannels, sampleRate, decim )
-//         val cachePath     = fileCache.createCacheFileName( path )
-         val cachePath     = createCacheFileName( path )
+  @throws(classOf[IOException])
+  def fromPath(path: File): SonogramOverview = {
+    sync.synchronized {
+      val af          = AudioFile.openRead(path)
+      val afDescr     = af.spec
+      af.close()    // render loop will re-open it if necessary...
+      val sampleRate  = afDescr.sampleRate
+      val stepSize    = max(64, (sampleRate * 0.0116 + 0.5).toInt) // 11.6ms spacing
+      val sonoSpec    = SonogramSpec(sampleRate, 32, min(16384, sampleRate / 2).toFloat, 24,
+          (stepSize / sampleRate * 1000).toFloat, 4096, stepSize)
+      val decim       = List(1, 6, 6, 6, 6)
+      val fileSpec    = new SonogramFileSpec(sonoSpec, path.lastModified, path,
+        afDescr.numFrames, afDescr.numChannels, sampleRate, decim)
+      // val cachePath     = fileCache.createCacheFileName( path )
+      val cachePath = createCacheFileName(path)
 
-         // try to retrieve existing overview file from cache
+      // try to retrieve existing overview file from cache
 //         val decimAFO      = if( cachePath.isFile ) {
 //            try {
 //               val cacheAF    = AudioFile.openRead( cachePath )
@@ -98,174 +88,157 @@ abstract class SonogramOverviewManager {
 //            }
 //            catch { case e: IOException => { None }}
 //         } else None
-val decimAFO = None
+      val decimAFO = None
 
-         // on failure, create new cache file
-         val decimAF = decimAFO getOrElse {
-//            val d             = new AudioFileDescr()
-//            d.file            = cachePath
-//            d.`type`          = AudioFileDescr.TYPE_AIFF
-//            d.channels        = afDescr.channels
-//            d.rate            = afDescr.rate
-//            d.bitsPerSample   = 32  // XXX really?
-//            d.sampleFormat    = AudioFileDescr.FORMAT_FLOAT
-//            d.appCode         = appCode
-//            d.setProperty( AudioFileDescr.KEY_APPCODE, fileSpec.encode )
-            val d = AudioFileSpec( AudioFileType.AIFF, SampleFormat.Float, afDescr.numChannels, afDescr.sampleRate )
-            AudioFile.openWrite( cachePath, d ) // XXX eventually should use shared buffer!!
-         }
-
-         val so = new SonogramOverview( mgr, fileSpec, decimAF )
-         // render overview if necessary
-         if( decimAFO.isEmpty ) queue( so )
-         so
+      // on failure, create new cache file
+      val decimAF = decimAFO getOrElse {
+        val d = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, afDescr.numChannels, afDescr.sampleRate)
+        AudioFile.openWrite(cachePath, d) // XXX eventually should use shared buffer!!
       }
-   }
 
-   private[ sonogram ] def allocateConstQ( spec: SonogramSpec /*, createKernels: Boolean = true */ ) : ConstQ = {
-      sync.synchronized {
-         val entry = constQCache.get( spec ) getOrElse
-            new ConstQCache( constQFromSpec( spec /*, createKernels */))
-         entry.useCount += 1
-         constQCache += (spec -> entry)  // in case it was newly created
-         entry.constQ
+      val so = new SonogramOverview(mgr, fileSpec, decimAF)
+      // render overview if necessary
+      if (decimAFO.isEmpty) queue(so)
+      so
+    }
+  }
+
+  private[sonogram] def allocateConstQ(spec: SonogramSpec): ConstQ = {
+    sync.synchronized {
+      val entry = constQCache.get(spec) getOrElse
+        new ConstQCache(constQFromSpec(spec))
+      entry.useCount += 1
+      constQCache    += (spec -> entry) // in case it was newly created
+      entry.constQ
+    }
+  }
+
+  private[sonogram] def allocateSonoImage(spec: SonogramImageSpec): SonogramImage = {
+    sync.synchronized {
+      val img     = allocateImage(spec.width, spec.height)
+      val fileBuf = allocateFileBuf(spec)
+      new SonogramImage(img, fileBuf)
+    }
+  }
+
+  private[sonogram] def releaseSonoImage(spec: SonogramImageSpec) {
+    sync.synchronized {
+      releaseImage(spec.width, spec.height)
+      releaseFileBuf(spec)
+    }
+  }
+
+  private[this] def allocateImage(width: Int, height: Int): BufferedImage = {
+    sync.synchronized {
+      val entry = imageCache.get((width, height)) getOrElse
+        new ImageCache(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB))
+      entry.useCount += 1
+      imageCache += ((width, height) -> entry) // in case it was newly created
+      entry.img
+    }
+  }
+
+  private[this] def allocateFileBuf(spec: SonogramImageSpec): Array[Array[Float]] = {
+    sync.synchronized {
+      val entry = fileBufCache.get(spec) getOrElse
+        new FileBufCache(Array.ofDim[Float](spec.numChannels, spec.width * spec.height))
+      entry.useCount += 1
+      fileBufCache += (spec -> entry) // in case it was newly created
+      entry.buf
+    }
+  }
+
+  private[sonogram] def releaseConstQ(spec: SonogramSpec) {
+    sync.synchronized {
+      val entry = constQCache(spec) // let it throw an exception if not contained
+      entry.useCount -= 1
+      if (entry.useCount == 0) {
+        constQCache -= spec
       }
-   }
+    }
+  }
 
-   private[ sonogram ] def allocateSonoImage( spec: SonogramImageSpec ) : SonogramImage = {
-      sync.synchronized {
-         val img     = allocateImage( spec.dim )
-         val fileBuf = allocateFileBuf( spec )
-         SonogramImage( img, fileBuf )
+  private[this] def releaseImage(width: Int, height: Int) {
+    sync.synchronized {
+      val key         = (width, height)
+      val entry       = imageCache(key) // let it throw an exception if not contained
+      entry.useCount -= 1
+      if (entry.useCount == 0) {
+        imageCache -= key
       }
-   }
+    }
+  }
 
-   private[ sonogram ] def releaseSonoImage( spec: SonogramImageSpec ) {
-      sync.synchronized {
-         releaseImage( spec.dim )
-         releaseFileBuf( spec )
+  private[this] def releaseFileBuf(spec: SonogramImageSpec) {
+    sync.synchronized {
+      val entry = fileBufCache(spec) // let it throw an exception if not contained
+      entry.useCount -= 1
+      if (entry.useCount == 0) {
+        fileBufCache -= spec
       }
-   }
+    }
+  }
 
-   private[this] def allocateImage( dim: Dimension ) : BufferedImage = {
-      sync.synchronized {
-         val entry = imageCache.get( dim ) getOrElse
-            new ImageCache( new BufferedImage( dim.width, dim.height, BufferedImage.TYPE_INT_RGB ))
-         entry.useCount += 1
-         imageCache += (dim -> entry)  // in case it was newly created
-         entry.img
+  private[this] def constQFromSpec(spec: SonogramSpec): ConstQ = {
+    val cfg = ConstQ.Config()
+    cfg.sampleRate = spec.sampleRate
+    cfg.minFreq = spec.minFreq
+    cfg.maxFreq = spec.maxFreq
+    cfg.bandsPerOct = spec.bandsPerOct
+    cfg.maxTimeRes = spec.maxTimeRes
+    cfg.maxFFTSize = spec.maxFFTSize
+    ConstQ(cfg)
+  }
+
+  private[this] var workerQueue   = IQueue[WorkingSonogram]()
+  private[this] var runningWorker = Option.empty[WorkingSonogram]
+
+  private def queue(sono: SonogramOverview) {
+    sync.synchronized {
+      workerQueue = workerQueue.enqueue(new WorkingSonogram(sono))
+      checkRun()
+    }
+  }
+
+  private[this] def dequeue(ws: WorkingSonogram) {
+    sync.synchronized {
+      val (s, q) = workerQueue.dequeue
+      workerQueue = q
+      assert(ws == s)
+      checkRun()
+    }
+  }
+
+  private[this] def checkRun() {
+    sync.synchronized {
+      if (runningWorker.isEmpty) {
+        workerQueue.headOption.foreach { next =>
+          runningWorker = Some(next)
+          next.addPropertyChangeListener(new PropertyChangeListener {
+            def propertyChange(e: PropertyChangeEvent) {
+              if (verbose) println("WorkingSonogram got in : " + e.getPropertyName + " / " + e.getNewValue)
+              if (e.getNewValue == SwingWorker.StateValue.DONE) {
+                runningWorker = None
+                dequeue(next)
+              }
+            }
+          })
+          next.execute()
+        }
       }
-   }
+    }
+  }
 
-   private[this] def allocateFileBuf( spec: SonogramImageSpec ) : Array[ Array[ Float ]] = {
-      sync.synchronized {
-         val entry = fileBufCache.get( spec ) getOrElse
-            new FileBufCache( Array.ofDim[ Float ]( spec.numChannels, spec.dim.width * spec.dim.height ))
-         entry.useCount += 1
-         fileBufCache += (spec -> entry)  // in case it was newly created
-         entry.buf
-      }
-   }
+  private[this] final class ConstQCache(val constQ: ConstQ) {
+    var useCount: Int = 0
+  }
 
-//   private def releaseConstQ( constQ: ConstQ ) : Unit =
-//      releaseConstQ( specFromConstQ( constQ ))
+  private[this] final class FileBufCache(val buf: Array[Array[Float]]) {
+    var useCount: Int = 0
+  }
 
-   private[ sonogram ] def releaseConstQ( spec: SonogramSpec ) {
-      sync.synchronized {
-         val entry   = constQCache( spec ) // let it throw an exception if not contained
-         entry.useCount -= 1
-         if( entry.useCount == 0 ) {
-            constQCache -= spec
-         }
-      }
-   }
+  private[this] final class ImageCache(val img: BufferedImage) {
+    var useCount: Int = 0
+  }
 
-   private[this] def releaseImage( dim: Dimension ) {
-      sync.synchronized {
-         val entry = imageCache( dim ) // let it throw an exception if not contained
-         entry.useCount -= 1
-         if( entry.useCount == 0 ) {
-            imageCache -= dim
-         }
-      }
-   }
-
-   private[this] def releaseFileBuf( spec: SonogramImageSpec ) {
-      sync.synchronized {
-         val entry = fileBufCache( spec ) // let it throw an exception if not contained
-         entry.useCount -= 1
-         if( entry.useCount == 0 ) {
-            fileBufCache -= spec
-         }
-      }
-   }
-
-//   private def specFromConstQ( constQ: ConstQ ) =
-//      SonogramSpec( constQ.getSampleRate, constQ.getMinFreq, constQ.getMaxFreq,
-//                    constQ.getBandsPerOct, constQ.getMaxTimeRes,
-//                    constQ.getMaxFFTSize )
-
-   private[this] def constQFromSpec( spec: SonogramSpec /*, createKernels: Boolean */) : ConstQ = {
-   	val cfg  = ConstQ.Config()
-      cfg.sampleRate = spec.sampleRate
-      cfg.minFreq    = spec.minFreq
-      cfg.maxFreq    = spec.maxFreq
-      cfg.bandsPerOct= spec.bandsPerOct
-      cfg.maxTimeRes = spec.maxTimeRes
-      cfg.maxFFTSize = spec.maxFFTSize
-//		println( "Creating ConstQ Kernels..." )
-//		if( createKernels ) constQ.createKernels()
-      ConstQ( cfg )
-   }
-
-   private[this] var workerQueue = Queue[ WorkingSonogram ]()
-   private[this] var runningWorker: Option[ WorkingSonogram ] = None
-
-   private def queue( sono: SonogramOverview ) {
-      sync.synchronized {
-         workerQueue = workerQueue.enqueue( new WorkingSonogram( sono ))
-         checkRun
-      }
-   }
-
-   private[this] def dequeue( ws: WorkingSonogram ) {
-      sync.synchronized {
-         val (s, q) = workerQueue.dequeue
-         workerQueue = q
-         assert( ws == s )
-         checkRun
-      }
-   }
-
-   private[this] def checkRun {
-      sync.synchronized {
-         if( runningWorker.isEmpty ) {
-            workerQueue.headOption.foreach( next => {
-               runningWorker = Some( next )
-               next.addPropertyChangeListener( new PropertyChangeListener {
-                  def propertyChange( e: PropertyChangeEvent ) {
-if( verbose ) println( "WorkingSonogram got in : " + e.getPropertyName + " / " + e.getNewValue )
-                     if( e.getNewValue == SwingWorker.StateValue.DONE ) {
-                        runningWorker = None
-                        dequeue( next )
-                     }
-                  }
-               })
-               next.execute()
-            })
-         }
-      }
-   }
-
-   private[this] class ConstQCache( val constQ: ConstQ ) {
-      var useCount: Int = 0
-   }
-
-   private[this] class FileBufCache( val buf: Array[ Array[ Float ]]) {
-      var useCount: Int = 0
-   }
-
-   private[this] class ImageCache( val img: BufferedImage ) {
-      var useCount: Int = 0
-   }
 }
