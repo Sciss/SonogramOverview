@@ -44,10 +44,10 @@ private[sonogram] object SonogramSpec {
       val minFreq     = dis.readFloat()
       val maxFreq     = dis.readFloat()
       val bandsPerOct = dis.readInt()
-      val maxTimeRes  = dis.readFloat()
+//      val maxTimeRes  = dis.readFloat()
       val maxFFTSize  = dis.readInt()
       val stepSize    = dis.readInt()
-      Some(SonogramSpec(sampleRate, minFreq, maxFreq, bandsPerOct, maxTimeRes, maxFFTSize, stepSize))
+      Some(SonogramSpec(sampleRate, minFreq, maxFreq, bandsPerOct, /* maxTimeRes, */ maxFFTSize, stepSize))
     }
     catch {
       case NonFatal(_) => None
@@ -56,7 +56,7 @@ private[sonogram] object SonogramSpec {
 }
 
 private[sonogram] case class SonogramSpec(sampleRate: Double, minFreq: Float, maxFreq: Float,
-                                          bandsPerOct: Int, maxTimeRes: Float, maxFFTSize: Int, stepSize: Int) {
+                                          bandsPerOct: Int, /* maxTimeRes: Float, */ maxFFTSize: Int, stepSize: Int) {
 
   val numKernels = ConstQ.getNumKernels(bandsPerOct, maxFreq, minFreq)
 
@@ -65,7 +65,7 @@ private[sonogram] case class SonogramSpec(sampleRate: Double, minFreq: Float, ma
     dos.writeFloat(minFreq)
     dos.writeFloat(maxFreq)
     dos.writeInt(bandsPerOct)
-    dos.writeFloat(maxTimeRes)
+//    dos.writeFloat(maxTimeRes)
     dos.writeInt(maxFFTSize)
     dos.writeInt(stepSize)
   }

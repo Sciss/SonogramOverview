@@ -35,6 +35,23 @@ import math._
 import de.sciss.dsp.ConstQ
 import de.sciss.synth.io.{SampleFormat, AudioFileType, AudioFileSpec, AudioFile}
 
+//object SonogramOverviewManager {
+//  def defaultConfig(spec: AudioFileSpec) : ConstQ.ConfigBuilder = {
+//    val b           = ConstQ.Config()
+//    b.sampleRate    = spec.sampleRate
+//    b.maxFreq       = min(16384, b.sampleRate / 2).toFloat
+//    b
+//
+//    val sampleRate  = afDescr.sampleRate
+//    val stepSize    = max(64, (sampleRate * 0.0116 + 0.5).toInt) // 11.6ms spacing
+//    val sonoSpec    = SonogramSpec(sampleRate = sampleRate, minFreq = 32, maxFreq = min(16384, sampleRate / 2).toFloat,
+//        bandsPerOct = 24, maxTimeRes = (stepSize / sampleRate * 1000).toFloat, maxFFTSize = 4096, stepSize = stepSize)
+//    val decim       = List(1, 6, 6, 6, 6)
+//    val fileSpec    = new SonogramFileSpec(sonoSpec, path.lastModified, path,
+//      afDescr.numFrames, afDescr.numChannels, sampleRate, decim)
+//    // val cachePath     = fileCache.createCacheFileName( path )
+//  }
+//}
 abstract class SonogramOverviewManager {
    mgr =>
 
@@ -50,21 +67,35 @@ abstract class SonogramOverviewManager {
   private var fileBufCache  = Map[SonogramImageSpec, FileBufCache]()
   private val sync          = new AnyRef
 
-  @throws(classOf[IOException])
-  def fromPath(path: File): SonogramOverview = {
+//  sampleRate: Double, minFreq: Float, maxFreq: Float,
+//  bandsPerOct: Int, maxTimeRes: Float, maxFFTSize: Int, stepSize: Int
+
+  /**
+   * Creates a new sonogram overview from a given audio file
+   *
+   * @param file    the audio file to analyze
+   * @param config  the settings for the analysis resolution. Note that `sampleRate` will be ignored as it is replaced
+   *                by the file's sample rate. Also note that `maxFreq` will be clipped to nyquist.
+   * @return
+   */
+  def fromFile(file: File, config: ConstQ.Config = ConstQ.Config()): SonogramOverview = {
     sync.synchronized {
-      val af          = AudioFile.openRead(path)
+      val af          = AudioFile.openRead(file)
       val afDescr     = af.spec
       af.close()    // render loop will re-open it if necessary...
       val sampleRate  = afDescr.sampleRate
-      val stepSize    = max(64, (sampleRate * 0.0116 + 0.5).toInt) // 11.6ms spacing
-      val sonoSpec    = SonogramSpec(sampleRate, 32, min(16384, sampleRate / 2).toFloat, 24,
-          (stepSize / sampleRate * 1000).toFloat, 4096, stepSize)
+      val stepSize    = (config.maxTimeRes/1000 * sampleRate + 0.5).toInt
+
+      val sonoSpec    = SonogramSpec(
+        sampleRate = sampleRate, minFreq = config.minFreq,
+        maxFreq = min(config.maxFreq, sampleRate / 2).toFloat, bandsPerOct = config.bandsPerOct,
+        maxFFTSize = 4096, stepSize = stepSize)
+
       val decim       = List(1, 6, 6, 6, 6)
-      val fileSpec    = new SonogramFileSpec(sonoSpec, path.lastModified, path,
-        afDescr.numFrames, afDescr.numChannels, sampleRate, decim)
+      val fileSpec    = new SonogramFileSpec(sono = sonoSpec, lastModified = file.lastModified, audioPath = file,
+        numFrames = afDescr.numFrames, numChannels = afDescr.numChannels, sampleRate = sampleRate, decim)
       // val cachePath     = fileCache.createCacheFileName( path )
-      val cachePath = createCacheFileName(path)
+      val cachePath = createCacheFileName(file)
 
       // try to retrieve existing overview file from cache
 //         val decimAFO      = if( cachePath.isFile ) {
@@ -128,7 +159,7 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private[this] def allocateImage(width: Int, height: Int): BufferedImage = {
+  private def allocateImage(width: Int, height: Int): BufferedImage = {
     sync.synchronized {
       val entry = imageCache.get((width, height)) getOrElse
         new ImageCache(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB))
@@ -138,7 +169,7 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private[this] def allocateFileBuf(spec: SonogramImageSpec): Array[Array[Float]] = {
+  private def allocateFileBuf(spec: SonogramImageSpec): Array[Array[Float]] = {
     sync.synchronized {
       val entry = fileBufCache.get(spec) getOrElse
         new FileBufCache(Array.ofDim[Float](spec.numChannels, spec.width * spec.height))
@@ -158,7 +189,7 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private[this] def releaseImage(width: Int, height: Int) {
+  private def releaseImage(width: Int, height: Int) {
     sync.synchronized {
       val key         = (width, height)
       val entry       = imageCache(key) // let it throw an exception if not contained
@@ -169,7 +200,7 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private[this] def releaseFileBuf(spec: SonogramImageSpec) {
+  private def releaseFileBuf(spec: SonogramImageSpec) {
     sync.synchronized {
       val entry = fileBufCache(spec) // let it throw an exception if not contained
       entry.useCount -= 1
@@ -179,19 +210,21 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private[this] def constQFromSpec(spec: SonogramSpec): ConstQ = {
+  private def constQFromSpec(spec: SonogramSpec): ConstQ = {
     val cfg = ConstQ.Config()
-    cfg.sampleRate = spec.sampleRate
-    cfg.minFreq = spec.minFreq
-    cfg.maxFreq = spec.maxFreq
+    cfg.sampleRate  = spec.sampleRate
+    cfg.minFreq     = spec.minFreq
+    cfg.maxFreq     = spec.maxFreq
     cfg.bandsPerOct = spec.bandsPerOct
-    cfg.maxTimeRes = spec.maxTimeRes
-    cfg.maxFFTSize = spec.maxFFTSize
+    val maxTimeRes  = spec.stepSize / spec.sampleRate * 1000
+//    cfg.maxTimeRes  = spec.maxTimeRes
+    cfg.maxTimeRes  = maxTimeRes.toFloat  // note: this is a purely informative field
+    cfg.maxFFTSize  = spec.maxFFTSize
     ConstQ(cfg)
   }
 
-  private[this] var workerQueue   = IQueue[WorkingSonogram]()
-  private[this] var runningWorker = Option.empty[WorkingSonogram]
+  private var workerQueue   = IQueue[WorkingSonogram]()
+  private var runningWorker = Option.empty[WorkingSonogram]
 
   private def queue(sono: SonogramOverview) {
     sync.synchronized {
@@ -200,7 +233,7 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private[this] def dequeue(ws: WorkingSonogram) {
+  private def dequeue(ws: WorkingSonogram) {
     sync.synchronized {
       val (s, q) = workerQueue.dequeue
       workerQueue = q
@@ -209,7 +242,7 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private[this] def checkRun() {
+  private def checkRun() {
     sync.synchronized {
       if (runningWorker.isEmpty) {
         workerQueue.headOption.foreach { next =>
@@ -229,16 +262,15 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private[this] final class ConstQCache(val constQ: ConstQ) {
+  private final class ConstQCache(val constQ: ConstQ) {
     var useCount: Int = 0
   }
 
-  private[this] final class FileBufCache(val buf: Array[Array[Float]]) {
+  private final class FileBufCache(val buf: Array[Array[Float]]) {
     var useCount: Int = 0
   }
 
-  private[this] final class ImageCache(val img: BufferedImage) {
+  private final class ImageCache(val img: BufferedImage) {
     var useCount: Int = 0
   }
-
 }

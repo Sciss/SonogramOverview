@@ -52,7 +52,7 @@ object Demo extends App with Runnable {
     try {
       val path    = new File(fDir, fName)
       val mgr     = new SimpleSonogramOverviewManager
-      val ov      = mgr.fromPath(path)
+      val ov      = mgr.fromFile(path)
       val view    = new SimpleSonogramView
       view.boost  = 4f
       view.sono   = Some(ov)
