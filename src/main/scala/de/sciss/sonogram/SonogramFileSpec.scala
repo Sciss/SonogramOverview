@@ -25,6 +25,7 @@
 
 package de.sciss.sonogram
 
+import impl.DecimationSpec
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, DataOutputStream, File}
 import util.control.NonFatal
 
@@ -75,7 +76,7 @@ final case class SonogramFileSpec(sono: SonogramSpec, lastModified: Long, audioP
     decim.map { decimFactor =>
       totalDecim   *= decimFactor
       numWindows    = (numWindows + decimFactor - 1) / decimFactor
-      val decimSpec = new SonogramDecimSpec(offset, numWindows, decimFactor, totalDecim)
+      val decimSpec = new DecimationSpec(offset, numWindows, decimFactor, totalDecim)
       offset       += numWindows * sono.numKernels
       decimSpec
     }
@@ -88,7 +89,7 @@ final case class SonogramFileSpec(sono: SonogramSpec, lastModified: Long, audioP
   private[sonogram] def expectedDecimNumFrames =
     decimSpecs.last.offset + decimSpecs.last.numWindows * sono.numKernels
 
-  private[sonogram] def getBestDecim(idealDecim: Float): SonogramDecimSpec = {
+  private[sonogram] def getBestDecim(idealDecim: Float): DecimationSpec = {
     var best = decimSpecs.head
     var i = 0
     while ((i < decimSpecs.size) && (decimSpecs(i).totalDecim < idealDecim)) {

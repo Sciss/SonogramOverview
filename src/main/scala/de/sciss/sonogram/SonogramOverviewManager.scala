@@ -26,6 +26,7 @@
 
 package de.sciss.sonogram
 
+import impl.{SonogramImage, SonogramImageSpec, WorkingSonogram}
 import java.awt.image.BufferedImage
 import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import java.io.{File, IOException}
@@ -127,7 +128,7 @@ abstract class SonogramOverviewManager {
         AudioFile.openWrite(cachePath, d) // XXX eventually should use shared buffer!!
       }
 
-      val so = new SonogramOverview(mgr, fileSpec, decimAF)
+      val so = SonogramOverview(mgr, fileSpec, decimAF)
       // render overview if necessary
       if (decimAFO.isEmpty) queue(so)
       so
@@ -249,7 +250,7 @@ abstract class SonogramOverviewManager {
           runningWorker = Some(next)
           next.addPropertyChangeListener(new PropertyChangeListener {
             def propertyChange(e: PropertyChangeEvent) {
-              if (verbose) println("WorkingSonogram got in : " + e.getPropertyName + " / " + e.getNewValue)
+              if (SonogramOverview.verbose) println("WorkingSonogram got in : " + e.getPropertyName + " / " + e.getNewValue)
               if (e.getNewValue == SwingWorker.StateValue.DONE) {
                 runningWorker = None
                 dequeue(next)

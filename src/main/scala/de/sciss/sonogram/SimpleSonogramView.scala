@@ -70,8 +70,8 @@ extends JComponent with SonogramPaintController {
 
    // ---- SonogramOverviewListener ----
 
-   private val listener = (msg: AnyRef) => msg match {
-      case OverviewComplete( ov ) => repaint()
+   private val listener: SonogramOverview.Listener = {
+      case SonogramOverview.Complete(_) => repaint()
       case _ =>
    }
 }

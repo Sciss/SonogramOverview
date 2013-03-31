@@ -10,13 +10,12 @@ homepage <<= name { n => Some(url("https://github.com/Sciss/" + n)) }
 
 licenses := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion := "2.10.0"
-
-// crossScalaVersions := Seq( "2.10.0-M7", "2.9.2" )
+scalaVersion := "2.10.1"
 
 libraryDependencies ++= Seq(
+  "de.sciss" %% "processor" % "0.1.+",
   "de.sciss" %% "scalaaudiofile" % "1.2.+",
-  "de.sciss" % "intensitypalette" % "1.0.0",
+  "de.sciss" %  "intensitypalette" % "1.0.0",
   "de.sciss" %% "scissdsp" % "1.1.+"
 )
 
