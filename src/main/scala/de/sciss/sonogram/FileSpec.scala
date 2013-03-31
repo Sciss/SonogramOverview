@@ -1,5 +1,5 @@
 /*
- *  SonogramFileSpec.scala
+ *  FileSpec.scala
  *  (SonogramOverview)
  *
  *  Copyright (c) 2010-2013 Hanns Holger Rutz. All rights reserved.
@@ -26,13 +26,12 @@
 package de.sciss.sonogram
 
 import impl.DecimationSpec
-import java.io.{ByteArrayInputStream, ByteArrayOutputStream, DataInputStream, DataOutputStream, File}
-import util.control.NonFatal
+import java.io.{DataOutput, DataOutputStream, ByteArrayOutputStream, File, DataInput, DataInputStream, ByteArrayInputStream}
 
-object SonogramFileSpec {
+object FileSpec {
   private final val COOKIE = 0x53000000 // 'Ttm ', 'S' version 0
 
-  private[sonogram] def decode(blob: Array[Byte]): Option[SonogramFileSpec] = {
+  private[sonogram] def decode(blob: Array[Byte]): FileSpec = {
     val bais    = new ByteArrayInputStream(blob)
     val dis     = new DataInputStream(bais)
     val result  = decode(dis)
@@ -40,31 +39,25 @@ object SonogramFileSpec {
     result
   }
 
-  private[sonogram] def decode(dis: DataInputStream): Option[SonogramFileSpec] = {
-    try {
-      val cookie = dis.readInt()
-      if (cookie != COOKIE) return None
-      SonogramSpec.decode(dis).map(sono => {
-        val lastModified  = dis.readLong()
-        val audioPath     = new File(dis.readUTF())
-        val numFrames     = dis.readLong()
-        val numChannels   = dis.readInt()
-        val sampleRate    = dis.readDouble()
-        val numDecim      = dis.readShort()
-        val decim         = (0 until numDecim).map(i => dis.readShort().toInt).toList
-        SonogramFileSpec(sono, lastModified, audioPath, numFrames, numChannels, sampleRate, decim)
-      }) orElse None
-    }
-    catch {
-      case NonFatal(_) => None
-    }
+  private[sonogram] def decode(dis: DataInput): FileSpec = {
+    val cookie = dis.readInt()
+    require(cookie == COOKIE, s"Unexpected cookie $cookie")
+    val sono = SonogramSpec.decode(dis)
+    val lastModified  = dis.readLong()
+    val audioPath     = new File(dis.readUTF())
+    val numFrames     = dis.readLong()
+    val numChannels   = dis.readInt()
+    val sampleRate    = dis.readDouble()
+    val numDecim      = dis.readShort()
+    val decim         = (0 until numDecim).map(i => dis.readShort().toInt).toList
+    FileSpec(sono, lastModified, audioPath, numFrames, numChannels, sampleRate, decim)
   }
 }
 
-final case class SonogramFileSpec(sono: SonogramSpec, lastModified: Long, audioPath: File,
+final case class FileSpec(sono: SonogramSpec, lastModified: Long, audioPath: File,
                                   numFrames: Long, numChannels: Int, sampleRate: Double, decim: List[Int]) {
 
-  import SonogramFileSpec._
+  import FileSpec._
 
   private[sonogram] val decimSpecs = {
     var totalDecim  = sono.stepSize
@@ -107,7 +100,7 @@ final case class SonogramFileSpec(sono: SonogramSpec, lastModified: Long, audioP
     baos.toByteArray
   }
 
-  private[sonogram] def encode(dos: DataOutputStream) {
+  private[sonogram] def encode(dos: DataOutput) {
     dos.writeInt(COOKIE)
     sono.encode(dos)
     dos.writeLong(lastModified)

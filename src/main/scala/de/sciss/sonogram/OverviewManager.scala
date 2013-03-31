@@ -1,6 +1,6 @@
 /*
- *  SonogramOverviewManager.scala
- *  (SonogramOverview)
+ *  OverviewManager.scala
+ *  (Overview)
  *
  *  Copyright (c) 2010-2013 Hanns Holger Rutz. All rights reserved.
  *
@@ -26,7 +26,7 @@
 
 package de.sciss.sonogram
 
-import impl.{SonogramImage, SonogramImageSpec, WorkingSonogram}
+import impl.{Image, ImageSpec, WorkingSonogram}
 import java.awt.image.BufferedImage
 import java.beans.{PropertyChangeEvent, PropertyChangeListener}
 import java.io.{File, IOException}
@@ -36,7 +36,7 @@ import math._
 import de.sciss.dsp.ConstQ
 import de.sciss.synth.io.{SampleFormat, AudioFileType, AudioFileSpec, AudioFile}
 
-//object SonogramOverviewManager {
+//object OverviewManager {
 //  def defaultConfig(spec: AudioFileSpec) : ConstQ.ConfigBuilder = {
 //    val b           = ConstQ.Config()
 //    b.sampleRate    = spec.sampleRate
@@ -53,10 +53,10 @@ import de.sciss.synth.io.{SampleFormat, AudioFileType, AudioFileSpec, AudioFile}
 //    // val cachePath     = fileCache.createCacheFileName( path )
 //  }
 //}
-abstract class SonogramOverviewManager {
+abstract class OverviewManager {
    mgr =>
 
-   import SonogramOverview._
+   import Overview._
 
    // ---- subclass must define these abstract methods ----
    def appCode: String // APPCODE  = "Ttm "
@@ -65,7 +65,7 @@ abstract class SonogramOverviewManager {
 
   private var constQCache   = Map[SonogramSpec, ConstQCache]()
   private var imageCache    = Map[(Int, Int), ImageCache]()
-  private var fileBufCache  = Map[SonogramImageSpec, FileBufCache]()
+  private var fileBufCache  = Map[ImageSpec, FileBufCache]()
   private val sync          = new AnyRef
 
 //  sampleRate: Double, minFreq: Float, maxFreq: Float,
@@ -79,7 +79,7 @@ abstract class SonogramOverviewManager {
    *                by the file's sample rate. Also note that `maxFreq` will be clipped to nyquist.
    * @return
    */
-  def fromFile(file: File, config: ConstQ.Config = ConstQ.Config()): SonogramOverview = {
+  def fromFile(file: File, config: ConstQ.Config = ConstQ.Config()): Overview = {
     sync.synchronized {
       val af          = AudioFile.openRead(file)
       val afDescr     = af.spec
@@ -93,33 +93,33 @@ abstract class SonogramOverviewManager {
         maxFFTSize = 4096, stepSize = stepSize)
 
       val decim       = List(1, 6, 6, 6, 6)
-      val fileSpec    = new SonogramFileSpec(sono = sonoSpec, lastModified = file.lastModified, audioPath = file,
+      val fileSpec    = new FileSpec(sono = sonoSpec, lastModified = file.lastModified, audioPath = file,
         numFrames = afDescr.numFrames, numChannels = afDescr.numChannels, sampleRate = sampleRate, decim)
       // val cachePath     = fileCache.createCacheFileName( path )
       val cachePath = createCacheFileName(file)
 
       // try to retrieve existing overview file from cache
-//         val decimAFO      = if( cachePath.isFile ) {
-//            try {
-//               val cacheAF    = AudioFile.openRead( cachePath )
-//               try {
-//                  cacheAF.readAppCode()
-//                  val cacheDescr = cacheAF.spec
-//                  val blob       = cacheDescr.getProperty( AudioFileDescr.KEY_APPCODE ).asInstanceOf[ Array[ Byte ]]
-//                  if( (cacheDescr.appCode == appCode) && (blob != null) && (SonogramFileSpec.decode( blob ) == Some( fileSpec ))
-//                      && (cacheDescr.length == fileSpec.expectedDecimNumFrames) ) {
-//                     af.cleanUp // do not need it anymore for reading
-//                     fileSpec.makeAllAvailable
-//                     Some( cacheAF )
-//                  } else {
-//                     cacheAF.cleanUp
-//                     None
-//                  }
-//               }
-//               catch { case e: IOException => { cacheAF.cleanUp; None }}
-//            }
-//            catch { case e: IOException => { None }}
-//         } else None
+      //         val decimAFO      = if( cachePath.isFile ) {
+      //            try {
+      //               val cacheAF    = AudioFile.openRead( cachePath )
+      //               try {
+      //                  cacheAF.readAppCode()
+      //                  val cacheDescr = cacheAF.spec
+      //                  val blob       = cacheDescr.getProperty( AudioFileDescr.KEY_APPCODE ).asInstanceOf[ Array[ Byte ]]
+      //                  if( (cacheDescr.appCode == appCode) && (blob != null) && (SonogramFileSpec.decode( blob ) == Some( fileSpec ))
+      //                      && (cacheDescr.length == fileSpec.expectedDecimNumFrames) ) {
+      //                     af.cleanUp // do not need it anymore for reading
+      //                     fileSpec.makeAllAvailable
+      //                     Some( cacheAF )
+      //                  } else {
+      //                     cacheAF.cleanUp
+      //                     None
+      //                  }
+      //               }
+      //               catch { case e: IOException => { cacheAF.cleanUp; None }}
+      //            }
+      //            catch { case e: IOException => { None }}
+      //         } else None
       val decimAFO = None
 
       // on failure, create new cache file
@@ -128,7 +128,7 @@ abstract class SonogramOverviewManager {
         AudioFile.openWrite(cachePath, d) // XXX eventually should use shared buffer!!
       }
 
-      val so = SonogramOverview(mgr, fileSpec, decimAF)
+      val so = Overview(mgr, fileSpec, decimAF)
       // render overview if necessary
       if (decimAFO.isEmpty) queue(so)
       so
@@ -145,15 +145,15 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private[sonogram] def allocateSonoImage(spec: SonogramImageSpec): SonogramImage = {
+  private[sonogram] def allocateSonoImage(spec: ImageSpec): Image = {
     sync.synchronized {
       val img     = allocateImage(spec.width, spec.height)
       val fileBuf = allocateFileBuf(spec)
-      new SonogramImage(img, fileBuf)
+      new Image(img, fileBuf)
     }
   }
 
-  private[sonogram] def releaseSonoImage(spec: SonogramImageSpec) {
+  private[sonogram] def releaseSonoImage(spec: ImageSpec) {
     sync.synchronized {
       releaseImage(spec.width, spec.height)
       releaseFileBuf(spec)
@@ -170,7 +170,7 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private def allocateFileBuf(spec: SonogramImageSpec): Array[Array[Float]] = {
+  private def allocateFileBuf(spec: ImageSpec): Array[Array[Float]] = {
     sync.synchronized {
       val entry = fileBufCache.get(spec) getOrElse
         new FileBufCache(Array.ofDim[Float](spec.numChannels, spec.width * spec.height))
@@ -201,7 +201,7 @@ abstract class SonogramOverviewManager {
     }
   }
 
-  private def releaseFileBuf(spec: SonogramImageSpec) {
+  private def releaseFileBuf(spec: ImageSpec) {
     sync.synchronized {
       val entry = fileBufCache(spec) // let it throw an exception if not contained
       entry.useCount -= 1
@@ -227,7 +227,7 @@ abstract class SonogramOverviewManager {
   private var workerQueue   = IQueue[WorkingSonogram]()
   private var runningWorker = Option.empty[WorkingSonogram]
 
-  private def queue(sono: SonogramOverview) {
+  private def queue(sono: Overview) {
     sync.synchronized {
       workerQueue = workerQueue.enqueue(new WorkingSonogram(sono))
       checkRun()
@@ -250,7 +250,7 @@ abstract class SonogramOverviewManager {
           runningWorker = Some(next)
           next.addPropertyChangeListener(new PropertyChangeListener {
             def propertyChange(e: PropertyChangeEvent) {
-              if (SonogramOverview.verbose) println("WorkingSonogram got in : " + e.getPropertyName + " / " + e.getNewValue)
+              if (Overview.verbose) println("WorkingSonogram got in : " + e.getPropertyName + " / " + e.getNewValue)
               if (e.getNewValue == SwingWorker.StateValue.DONE) {
                 runningWorker = None
                 dequeue(next)

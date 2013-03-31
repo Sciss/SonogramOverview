@@ -4,7 +4,7 @@ package impl
 import javax.swing.SwingWorker
 import util.control.NonFatal
 
-private[sonogram] final class WorkingSonogram(sono: SonogramOverview)
+private[sonogram] final class WorkingSonogram(sono: Overview)
   extends SwingWorker[Unit, Unit] {
 
   override protected def doInBackground() {

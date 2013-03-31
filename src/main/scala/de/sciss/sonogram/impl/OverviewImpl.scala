@@ -1,6 +1,6 @@
 /*
- *  SonogramOverview.scala
- *  (SonogramOverview)
+ *  Overview.scala
+ *  (Overview)
  *
  *  Copyright (c) 2010-2013 Hanns Holger Rutz. All rights reserved.
  *
@@ -35,39 +35,22 @@ import de.sciss.intensitypalette.IntensityPalette
 import java.{util => ju}
 import de.sciss.model.impl.ModelImpl
 
-private[sonogram] object SonogramOverviewImpl {
+private[sonogram] object OverviewImpl {
   private lazy val log10 = FastLog(base = 10, q = 11)
 }
 
-private[sonogram] class SonogramOverviewImpl(mgr: SonogramOverviewManager, val fileSpec: SonogramFileSpec,
+private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpec,
                                              decimAF: AudioFile)
-  extends SonogramOverview with ModelImpl[SonogramOverview.Update] {
+  extends Overview with ModelImpl[Overview.Update] {
 
-  import SonogramOverviewImpl._
+  import OverviewImpl._
 
-//  private final class Worker(sono: SonogramOverview)
-//    extends SwingWorker[Unit, Unit] {
-//
-//    override protected def doInBackground() {
-//      try {
-//        ??? // sono.render(this)
-//      }
-//      catch {
-//        case NonFatal(e) => e.printStackTrace()
-//      }
-//    }
-//
-//    override protected def done() {
-//      ??? // sono.dispatchComplete()
-//    }
-//  }
-
-  private val sync              = new AnyRef
-   private val numChannels       = fileSpec.numChannels
-   private val numKernels        = fileSpec.sono.numKernels
-   private val imgSpec           = SonogramImageSpec(numChannels, width = 128, height = numKernels)
-   private val sonoImg           = mgr.allocateSonoImage( imgSpec )
-   private val imgData           = sonoImg.img.getRaster.getDataBuffer.asInstanceOf[ DataBufferInt ].getData
+  private val sync        = new AnyRef
+  private val numChannels = fileSpec.numChannels
+  private val numKernels  = fileSpec.sono.numKernels
+  private val imgSpec     = ImageSpec(numChannels, width = 128, height = numKernels)
+  private val sonoImg     = mgr.allocateSonoImage(imgSpec)
+  private val imgData     = sonoImg.img.getRaster.getDataBuffer.asInstanceOf[DataBufferInt].getData
 
   // caller must have sync
   private def seekWindow(decim: DecimationSpec, idx: Long) {
@@ -80,7 +63,7 @@ private[sonogram] class SonogramOverviewImpl(mgr: SonogramOverviewManager, val f
   //   val rnd = new java.util.Random()
   def paint(spanStart: Double, spanStop: Double, g2: Graphics2D, tx: Int,
             ty: Int, width: Int, height: Int,
-            ctrl: SonogramPaintController) {
+            ctrl: PaintController) {
     val idealDecim  = ((spanStop - spanStart) / width).toFloat
     val in          = fileSpec.getBestDecim(idealDecim)
     // val scaleW        = idealDecim / in.totalDecim
@@ -224,7 +207,7 @@ private[sonogram] class SonogramOverviewImpl(mgr: SonogramOverviewManager, val f
     }
     decimAF.flush()
     val t3 = System.currentTimeMillis
-    if (SonogramOverview.verbose) println("primary : secondary ratio = " + (t2 - t1).toDouble / (t3 - t2))
+    if (Overview.verbose) println("primary : secondary ratio = " + (t2 - t1).toDouble / (t3 - t2))
   }
 
   private def primaryRender(ws: WorkingSonogram, constQ: ConstQ, in: AudioFile) {

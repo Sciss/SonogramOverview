@@ -51,9 +51,9 @@ object Demo extends App with Runnable {
 
     try {
       val path    = new File(fDir, fName)
-      val mgr     = new SimpleSonogramOverviewManager
+      val mgr     = new SimpleOverviewManager
       val ov      = mgr.fromFile(path)
-      val view    = new SimpleSonogramView
+      val view    = new SonogramComponent
       view.boost  = 4f
       view.sono   = Some(ov)
       val ggBoost = new JSlider(SwingConstants.VERTICAL, 0, 360, 120)

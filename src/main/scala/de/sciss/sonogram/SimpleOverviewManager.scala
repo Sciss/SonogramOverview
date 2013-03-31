@@ -1,5 +1,5 @@
 /*
- *  SonogramOverview.scala
+ *  SimpleSonogramOverviewManager.scala
  *  (SonogramOverview)
  *
  *  Copyright (c) 2010-2013 Hanns Holger Rutz. All rights reserved.
@@ -25,25 +25,10 @@
 
 package de.sciss.sonogram
 
-import java.awt.Graphics2D
-import de.sciss.model.Model
-import de.sciss.synth.io.AudioFile
-import impl.{SonogramOverviewImpl => Impl}
+import java.io.File
 
-object SonogramOverview {
-  sealed trait Update { val view: SonogramOverview }
-  final case class Complete(view: SonogramOverview) extends Update
+class SimpleOverviewManager extends OverviewManager {
+  protected final def createCacheFileName(path: File) = File.createTempFile("sono", ".tmp")
 
-  type Listener = Model.Listener[Update]
-
-  def apply(manager: SonogramOverviewManager, file: SonogramFileSpec, decimation: AudioFile): SonogramOverview =
-    new Impl(manager, file, decimation)
-
-  var verbose = false
-}
-trait SonogramOverview extends Model[SonogramOverview.Update] {
-  def fileSpec: SonogramFileSpec
-
-  def paint(spanStart: Double, spanStop: Double, g2: Graphics2D, tx: Int, ty: Int, width: Int, height: Int,
-            ctrl: SonogramPaintController): Unit
+  val appCode = "????"
 }
