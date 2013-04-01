@@ -81,9 +81,6 @@ object Overview extends ProcessorFactory {
 //    decimSpecs.foreach(d => d.windowsReady = d.numWindows)
 //  }
 
-//  private[sonogram] def expectedDecimNumFrames =
-//    decimSpecs.last.offset + decimSpecs.last.numWindows * sono.numKernels
-
 //  def apply(manager: OverviewManager, file: FileSpec, decimation: AudioFile): Overview =
 //    new Impl(manager, file, decimation)
 
@@ -94,6 +91,8 @@ object Overview extends ProcessorFactory {
 }
 trait Overview extends Processor[Unit, Overview] {
   def config: Overview.Config
+
+  def dispose(): Unit
 
   def paint(spanStart: Double, spanStop: Double, g2: Graphics2D, tx: Int, ty: Int, width: Int, height: Int,
             ctrl: PaintController): Unit

@@ -30,5 +30,5 @@ import java.io.File
 class SimpleOverviewManager extends OverviewManager {
   protected final def createCacheFileName(path: File) = File.createTempFile("sono", ".tmp")
 
-  val appCode = "????"
+//  val appCode = ...
 }

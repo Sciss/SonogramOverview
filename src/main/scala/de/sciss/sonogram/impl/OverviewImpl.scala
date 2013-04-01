@@ -204,15 +204,13 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Overv
   }
 
   protected def body() {
-    val ws: WorkingSonogram = ???
-
     val constQ = manager.allocateConstQ(config.sonogram)
     // val fftSize = constQ.getFFTSize
     val t1 = System.currentTimeMillis
     try {
       val af = AudioFile.openRead(config.file)
       try {
-        primaryRender(ws, constQ, af)
+        primaryRender(constQ, af)
       }
       finally {
         af.cleanUp()
@@ -225,9 +223,9 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Overv
     var idxIn   = 0
     var idxOut  = 1
     while (idxOut < decimSpecs.length) {
-      if (ws.isCancelled) return
+//      if (ws.isCancelled) return
       // if( verbose ) println( "start " + pair.head.totalDecim )
-      secondaryRender(ws, decimSpecs(idxIn), decimSpecs(idxOut))
+      secondaryRender(decimSpecs(idxIn), decimSpecs(idxOut))
       // if( verbose ) println( "finished " + pair.head.totalDecim )
       idxIn   = idxOut
       idxOut += 1
@@ -237,7 +235,7 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Overv
     if (Overview.verbose) println("primary : secondary ratio = " + (t2 - t1).toDouble / (t3 - t2))
   }
 
-  private def primaryRender(ws: WorkingSonogram, constQ: ConstQ, in: AudioFile) {
+  private def primaryRender(constQ: ConstQ, in: AudioFile) {
     val fftSize     = constQ.fftSize
     val stepSize    = config.sonogram.stepSize
     val inBuf       = Array.ofDim[Float](numChannels, fftSize)
@@ -252,7 +250,9 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Overv
     var ch          = 0
 
     var step = 0
-    while (step < out.numWindows && !ws.isCancelled) {
+    while (step < out.numWindows) {
+      checkAborted()
+
       val chunkLen = math.min(inLen, numFrames - framesRead).toInt
       in.read(inBuf, inOff, chunkLen)
       framesRead += chunkLen
@@ -294,7 +294,7 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Overv
 
   // XXX THIS NEEDS BIGGER BUFSIZE BECAUSE NOW WE SEEK IN THE SAME FILE
   // FOR INPUT AND OUTPUT!!!
-  private def secondaryRender(ws: WorkingSonogram, in: DecimationSpec, out: DecimationSpec) {
+  private def secondaryRender(in: DecimationSpec, out: DecimationSpec) {
     val dec         = out.decimFactor
     val bufSize     = dec * numKernels
     val buf         = Array.ofDim[Float](numChannels, bufSize)
@@ -306,7 +306,9 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Overv
 
     var step = 0
     var ch = 0
-    while (step < out.numWindows && !ws.isCancelled) {
+    while (step < out.numWindows) {
+      checkAborted()
+
       val chunkLen = math.min(inLen, (in.numWindows - windowsRead) * numKernels).toInt
       sync.synchronized {
         seekWindow(in, windowsRead)
@@ -355,11 +357,13 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Overv
   private var disposed = false
 
   def dispose() {
-    if (!disposed) {
-      disposed = true
-      releaseListeners()
-      manager.releaseSonoImage(imgSpec)
-      decimAF.cleanUp() // XXX delete?
-    }
+    sync.synchronized(
+      if (!disposed) {
+        disposed = true
+        releaseListeners()
+        manager.releaseSonoImage(imgSpec)
+        decimAF.cleanUp() // XXX delete?
+      }
+    )
   }
 }
