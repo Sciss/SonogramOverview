@@ -34,12 +34,13 @@ import de.sciss.intensitypalette.IntensityPalette
 import java.{util => ju}
 import de.sciss.processor.impl.ProcessorImpl
 import collection.breakOut
+import de.sciss.sonogram.ResourceManager.ImageSpec
 
 private[sonogram] object OverviewImpl {
   private lazy val log10 = FastLog(base = 10, q = 11)
 }
 
-private[sonogram] class OverviewImpl(val config: Overview.Config, manager: OverviewManager,
+private[sonogram] class OverviewImpl(val config: Overview.Config, manager: ResourceManager,
                                      decimAF: AudioFile)
   extends Overview with ProcessorImpl[Unit, Overview] {
 
@@ -49,7 +50,7 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Overv
   private val numChannels = config.fileSpec.numChannels
   private val numKernels  = config.sonogram.numKernels
   private val imgSpec     = ImageSpec(numChannels, width = 128, height = numKernels)
-  private val sonoImg     = manager.allocateSonoImage(imgSpec)
+  private val sonoImg     = manager.allocateImage(imgSpec)
   private val imgData     = sonoImg.img.getRaster.getDataBuffer.asInstanceOf[DataBufferInt].getData
 
   // caller must have sync
@@ -361,7 +362,7 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Overv
       if (!disposed) {
         disposed = true
         releaseListeners()
-        manager.releaseSonoImage(imgSpec)
+        manager.releaseImage(imgSpec)
         decimAF.cleanUp() // XXX delete?
       }
     )

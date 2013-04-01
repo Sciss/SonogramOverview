@@ -34,10 +34,7 @@ import java.io.{DataOutput, DataOutputStream, ByteArrayOutputStream, File, DataI
 import de.sciss.lucre.io.ImmutableSerializer
 import de.sciss.lucre.io
 
-object Overview extends ProcessorFactory {
-  type Product  = Unit
-  type Repr     = Overview
-
+object Overview {
   object Config {
     private final val COOKIE = 0x53000001 // 'Ttm ', 'S' version 1
 
@@ -84,10 +81,12 @@ object Overview extends ProcessorFactory {
 //  def apply(manager: OverviewManager, file: FileSpec, decimation: AudioFile): Overview =
 //    new Impl(manager, file, decimation)
 
-  protected def prepare(config: Config): Prepared =
-    new Impl(config, ???, ???)
-
   var verbose = false
+
+  def openRead (config: Config,    decimation: AudioFile,    manager: OverviewManager): Overview = ???
+  def openWrite(config: Config, /* decimation: AudioFile, */ manager: OverviewManager): Overview = ???
+
+  type Observer = Model.Listener[Processor.Update[Unit, Overview]]
 }
 trait Overview extends Processor[Unit, Overview] {
   def config: Overview.Config

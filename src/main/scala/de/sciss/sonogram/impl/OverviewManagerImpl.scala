@@ -30,13 +30,15 @@ package impl
 import java.awt.image.BufferedImage
 import java.io.{FileInputStream, File}
 import de.sciss.dsp.ConstQ
-import de.sciss.synth.io.{SampleFormat, AudioFileType, AudioFileSpec, AudioFile}
+import de.sciss.synth.io.AudioFile
 import util.control.NonFatal
+import de.sciss.lucre.io.DataInput
+import de.sciss.sonogram.ResourceManager.{Image, ImageSpec}
 
 abstract class OverviewManagerImpl extends OverviewManager {
   mgr =>
 
-  import Overview._
+  import OverviewManager._
 
 //  // ---- subclass must define these abstract methods ----
 //  def appCode: String
@@ -53,8 +55,6 @@ abstract class OverviewManagerImpl extends OverviewManager {
 //  sampleRate: Double, minFreq: Float, maxFreq: Float,
 //  bandsPerOct: Int, maxTimeRes: Float, maxFFTSize: Int, stepSize: Int
 
-  final case class Config(file: File, analysis: ConstQ.Config = ConstQ.Config())
-
   /**
    * Creates a new sonogram overview from a given audio file
    *
@@ -63,70 +63,61 @@ abstract class OverviewManagerImpl extends OverviewManager {
    * @return
    */
   protected def prepare(config: Config): Overview = {
-    val in          = AudioFile.openRead(config.file)
+    val inF         = config.file
+    val in          = AudioFile.openRead(inF)
     val inSpec      = in.spec
     in.close()    // render loop will re-open it if necessary...
     val sampleRate  = inSpec.sampleRate
-    val stepSize    = (config.analysis.maxTimeRes/1000 * sampleRate + 0.5).toInt
+    val cq          = config.analysis
+    val stepSize    = (cq.maxTimeRes/1000 * sampleRate + 0.5).toInt
 
     val sonogram    = SonogramSpec(
-      sampleRate = sampleRate, minFreq = config.minFreq,
-      maxFreq = min(config.maxFreq, sampleRate / 2).toFloat, bandsPerOct = config.bandsPerOct,
+      sampleRate = sampleRate, minFreq = cq.minFreq,
+      maxFreq = math.min(cq.maxFreq, sampleRate / 2).toFloat, bandsPerOct = cq.bandsPerOct,
       maxFFTSize = 4096, stepSize = stepSize)
 
     val decim       = List(1, 6, 6, 6, 6)
-    val overCfg     = Overview.Config(file = file, fileSpec = inSpec, sonogram = sonogram,
-      lastModified = file.lastModified, decimation = decim)
+    val overCfg     = Overview.Config(file = inF, fileSpec = inSpec, sonogram = sonogram,
+      lastModified = inF.lastModified, decimation = decim)
     // val cachePath     = fileCache.createCacheFileName(path)
-    val cacheF        = createCachePrefix(file)
+    val cacheF        = createCachePrefix(inF)
     val cacheFolder   = cacheF.getParentFile
     val cachePrefix   = cacheF.getName
     val cacheMetaF    = new File(cacheFolder, cachePrefix + ".sono")
-    val cacheAudioF   = new File(cacheFolder, cachePrefix + ".aif")
+    val cacheAudioF   = new File(cacheFolder, cachePrefix + ".aif" )
 
-    val overviewO = if (cacheMetaF.isFile && cacheAudioF.isFile) {
+    var overviewO     = Option.empty[Overview]
+    if (cacheMetaF.isFile && cacheAudioF.isFile) {
       try {
         val metaIn = new FileInputStream(cacheMetaF)
         try {
-          val cacheConfig = Overview.Config.Serializer.read(metaIn)
-          if (cacheConfig != overCfg) None else {
+          val arr = new Array[Byte](metaIn.available())
+          metaIn.read(arr)
+          val cacheConfig = Overview.Config.Serializer.read(DataInput(arr))
+          if (cacheConfig == overCfg) {
             val cacheAudio = AudioFile.openRead(cacheAudioF)
-            if (cacheAudio == overCfg.fileSpec) Some(cacheAudio) else {
-              cacheAudio.close()
-              None
+            ??? // this is wrong: overCfg.fileSpec is audio input spec not decim spec
+            if (cacheAudio.spec == overCfg.fileSpec) {
+              val overview = Overview.openRead(overCfg, cacheAudio, this)
+              overviewO = Some(overview)
             }
           }
         } finally {
           metaIn.close()
         }
       } catch {
-        case NonFatal(_) => None
+        case NonFatal(_) =>
       }
     }
 
-    cacheAudioO match {
-      case Some(f) =>
-
-      case _ =>
+    overviewO.getOrElse {
+//      val d           = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, inSpec.numChannels, sampleRate)
+//      val cacheAudio  = AudioFile.openWrite(cacheAudioF, d) // XXX TODO: eventually should use shared buffer!!
+      Overview.openWrite(overCfg, /* cacheAudio, */ this)
     }
-
-
-    val decimAFO = None
-
-    // on failure, create new cache file
-    val decimAF = decimAFO getOrElse {
-      val d = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, afDescr.numChannels, afDescr.sampleRate)
-      AudioFile.openWrite(cachePath, d) // XXX eventually should use shared buffer!!
-    }
-
-???
-//      val so = Overview(mgr, fileSpec, decimAF)
-//      // render overview if necessary
-//      if (decimAFO.isEmpty) queue(so)
-//      so
   }
 
-  private[sonogram] def allocateConstQ(spec: SonogramSpec): ConstQ = {
+  def allocateConstQ(spec: SonogramSpec): ConstQ = {
     sync.synchronized {
       val entry = constQCache.get(spec) getOrElse
         new ConstQCache(constQFromSpec(spec))
@@ -136,7 +127,17 @@ abstract class OverviewManagerImpl extends OverviewManager {
     }
   }
 
-  private[sonogram] def allocateSonoImage(spec: ImageSpec): Image = {
+  def releaseConstQ(spec: SonogramSpec) {
+    sync.synchronized {
+      val entry = constQCache(spec) // let it throw an exception if not contained
+      entry.useCount -= 1
+      if (entry.useCount == 0) {
+        constQCache -= spec
+      }
+    }
+  }
+
+  def allocateImage(spec: ImageSpec): Image = {
     sync.synchronized {
       val img     = allocateImage(spec.width, spec.height)
       val fileBuf = allocateFileBuf(spec)
@@ -144,7 +145,7 @@ abstract class OverviewManagerImpl extends OverviewManager {
     }
   }
 
-  private[sonogram] def releaseSonoImage(spec: ImageSpec) {
+  def releaseImage(spec: ImageSpec) {
     sync.synchronized {
       releaseImage(spec.width, spec.height)
       releaseFileBuf(spec)
@@ -168,16 +169,6 @@ abstract class OverviewManagerImpl extends OverviewManager {
       entry.useCount += 1
       fileBufCache += (spec -> entry) // in case it was newly created
       entry.buf
-    }
-  }
-
-  private[sonogram] def releaseConstQ(spec: SonogramSpec) {
-    sync.synchronized {
-      val entry = constQCache(spec) // let it throw an exception if not contained
-      entry.useCount -= 1
-      if (entry.useCount == 0) {
-        constQCache -= spec
-      }
     }
   }
 
