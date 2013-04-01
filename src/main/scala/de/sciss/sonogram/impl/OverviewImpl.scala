@@ -28,28 +28,28 @@ package impl
 
 import java.awt.Graphics2D
 import java.awt.image.DataBufferInt
-import math._
 import de.sciss.dsp.{ConstQ, FastLog}
 import de.sciss.synth.io.AudioFile
 import de.sciss.intensitypalette.IntensityPalette
 import java.{util => ju}
-import de.sciss.model.impl.ModelImpl
+import de.sciss.processor.impl.ProcessorImpl
+import collection.breakOut
 
 private[sonogram] object OverviewImpl {
   private lazy val log10 = FastLog(base = 10, q = 11)
 }
 
-private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpec,
-                                             decimAF: AudioFile)
-  extends Overview with ModelImpl[Overview.Update] {
+private[sonogram] class OverviewImpl(val config: Overview.Config, manager: OverviewManager,
+                                     decimAF: AudioFile)
+  extends Overview with ProcessorImpl[Unit, Overview] {
 
   import OverviewImpl._
 
   private val sync        = new AnyRef
-  private val numChannels = fileSpec.numChannels
-  private val numKernels  = fileSpec.sono.numKernels
+  private val numChannels = config.fileSpec.numChannels
+  private val numKernels  = config.sonogram.numKernels
   private val imgSpec     = ImageSpec(numChannels, width = 128, height = numKernels)
-  private val sonoImg     = mgr.allocateSonoImage(imgSpec)
+  private val sonoImg     = manager.allocateSonoImage(imgSpec)
   private val imgData     = sonoImg.img.getRaster.getDataBuffer.asInstanceOf[DataBufferInt].getData
 
   // caller must have sync
@@ -60,15 +60,36 @@ private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpe
     }
   }
 
+  private val decimSpecs: Array[DecimationSpec] = {
+    var totalDecim  = config.sonogram.stepSize
+    var numWindows  = (config.fileSpec.numFrames + totalDecim - 1) / totalDecim
+    var offset      = 0L
+
+    config.decimation.map(decimFactor => {
+      if (offset != 0L) require(decimFactor % 2 != 0, "Only even decimation factors supported")
+      totalDecim   *= decimFactor
+      numWindows    = (numWindows + decimFactor - 1) / decimFactor
+      val decimSpec = new DecimationSpec(offset, numWindows, decimFactor, totalDecim)
+      offset       += numWindows * numKernels
+      decimSpec
+    })(breakOut)
+  }
+
+  private def getBestDecim(idealDecim: Float): DecimationSpec = {
+    var i = 0
+    while (i < decimSpecs.length && decimSpecs(i).totalDecim < idealDecim) i += 1
+    decimSpecs(i)
+  }
+
   //   val rnd = new java.util.Random()
   def paint(spanStart: Double, spanStop: Double, g2: Graphics2D, tx: Int,
             ty: Int, width: Int, height: Int,
             ctrl: PaintController) {
     val idealDecim  = ((spanStop - spanStart) / width).toFloat
-    val in          = fileSpec.getBestDecim(idealDecim)
+    val in          = getBestDecim(idealDecim)
     // val scaleW        = idealDecim / in.totalDecim
     val scaleW      = in.totalDecim / idealDecim
-    val vDecim      = max(1, (numChannels * numKernels) / height)
+    val vDecim      = math.max(1, (numChannels * numKernels) / height)
     val numVFull    = numKernels / vDecim
     // val vRemain       = numKernels % vDecim
     // val hasVRemain    = vRemain != 0
@@ -77,7 +98,7 @@ private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpe
     val start       = startD.toLong // i.e. trunc
     // val transX = (-(startD % 1.0) / idealDecim).toFloat
     val transX      = (-(startD % 1.0) * scaleW).toFloat
-    val stop        = ceil(spanStop / in.totalDecim).toLong // XXX include startD % 1.0 ?
+    val stop        = math.ceil(spanStop / in.totalDecim).toLong // XXX include startD % 1.0 ?
 
     var windowsRead = 0L
     val imgW        = imgSpec.width
@@ -107,9 +128,9 @@ private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpe
       sync.synchronized {
         if (in.windowsReady <= start) return // or draw busy-area
         seekWindow(in, start)
-        val numWindows = min(in.windowsReady, stop) - start
+        val numWindows = math.min(in.windowsReady, stop) - start
         while (windowsRead < numWindows) {
-          val chunkLen2 = min(imgW - xReset, numWindows - windowsRead).toInt
+          val chunkLen2 = math.min(imgW - xReset, numWindows - windowsRead).toInt
           val chunkLen  = chunkLen2 + xReset
           decimAF.read(sonoImg.fileBuf, 0, chunkLen2 * numKernels)
           windowsRead += chunkLen2
@@ -147,7 +168,7 @@ private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpe
                 }
                 val amp = ctrl.adjustGain(sum / vDecim, (iOff + xOff) / scaleW)
                 iBuf(iOff) = IntensityPalette.apply(
-                  (l10.calc(max(1.0e-9f, amp)) + pixOff) * pixScale
+                  (l10.calc(math.max(1.0e-9f, amp)) + pixOff) * pixScale
                 )
                 v   += 1
                 iOff -= imgW
@@ -182,12 +203,14 @@ private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpe
     }
   }
 
-  private[sonogram] def render(ws: WorkingSonogram) {
-    val constQ = mgr.allocateConstQ(fileSpec.sono)
+  protected def body() {
+    val ws: WorkingSonogram = ???
+
+    val constQ = manager.allocateConstQ(config.sonogram)
     // val fftSize = constQ.getFFTSize
     val t1 = System.currentTimeMillis
     try {
-      val af = AudioFile.openRead(fileSpec.audioPath)
+      val af = AudioFile.openRead(config.file)
       try {
         primaryRender(ws, constQ, af)
       }
@@ -196,14 +219,18 @@ private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpe
       }
     }
     finally {
-      mgr.releaseConstQ(fileSpec.sono)
+      manager.releaseConstQ(config.sonogram)
     }
-    val t2 = System.currentTimeMillis
-    fileSpec.decimSpecs.sliding(2, 1).foreach { pair =>
+    val t2      = System.currentTimeMillis
+    var idxIn   = 0
+    var idxOut  = 1
+    while (idxOut < decimSpecs.length) {
       if (ws.isCancelled) return
       // if( verbose ) println( "start " + pair.head.totalDecim )
-      secondaryRender(ws, pair.head, pair.last)
+      secondaryRender(ws, decimSpecs(idxIn), decimSpecs(idxOut))
       // if( verbose ) println( "finished " + pair.head.totalDecim )
+      idxIn   = idxOut
+      idxOut += 1
     }
     decimAF.flush()
     val t3 = System.currentTimeMillis
@@ -212,111 +239,116 @@ private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpe
 
   private def primaryRender(ws: WorkingSonogram, constQ: ConstQ, in: AudioFile) {
     val fftSize     = constQ.fftSize
-    val stepSize    = fileSpec.sono.stepSize
+    val stepSize    = config.sonogram.stepSize
     val inBuf       = Array.ofDim[Float](numChannels, fftSize)
     val outBuf      = Array.ofDim[Float](numChannels, numKernels)
 
     var inOff       = fftSize / 2
     var inLen       = fftSize - inOff
     val overLen     = fftSize - stepSize
-    val numFrames   = fileSpec.numFrames
+    val numFrames   = config.fileSpec.numFrames
     var framesRead  = 0L
-    val out         = fileSpec.decimSpecs.head
+    val out         = decimSpecs(0)
+    var ch          = 0
 
-    { var step = 0; while( step < out.numWindows && !ws.isCancelled ) {
-         val chunkLen = min( inLen, numFrames - framesRead ).toInt
-         in.read( inBuf, inOff, chunkLen )
-         framesRead += chunkLen
-         if( chunkLen < inLen ) {
-            { var ch = 0; while( ch < numChannels ) {
-               ju.Arrays.fill( inBuf( ch ), inOff + chunkLen, fftSize, 0f )
-            ch += 1 }}
-         }
-         { var ch = 0; while( ch < numChannels ) {
-            // input, inOff, inLen, output, outOff
-            constQ.transform( inBuf( ch ), fftSize, outBuf( ch ), 0, 0 )
-         ch += 1 }}
+    var step = 0
+    while (step < out.numWindows && !ws.isCancelled) {
+      val chunkLen = math.min(inLen, numFrames - framesRead).toInt
+      in.read(inBuf, inOff, chunkLen)
+      framesRead += chunkLen
+      if (chunkLen < inLen) {
+        ch = 0
+        while (ch < numChannels) {
+          ju.Arrays.fill(inBuf(ch), inOff + chunkLen, fftSize, 0f)
+          ch += 1
+        }
+      }
+      ch = 0
+      while (ch < numChannels) {
+        // input, inOff, inLen, output, outOff
+        constQ.transform(inBuf(ch), fftSize, outBuf(ch), 0, 0)
+        ch += 1
+      }
 
-         sync.synchronized {
-            seekWindow( out, out.windowsReady )
-            decimAF.write( outBuf, 0, numKernels )
-            out.windowsReady += 1
-         }
+      sync.synchronized {
+        seekWindow(out, out.windowsReady)
+        decimAF.write(outBuf, 0, numKernels)
+        out.windowsReady += 1
+      }
 
-         { var ch = 0; while( ch < numChannels ) {
-            val convBuf = inBuf( ch )
-            System.arraycopy( convBuf, stepSize, convBuf, 0, overLen )
-         ch += 1 }}
+      ch = 0
+      while (ch < numChannels) {
+        val convBuf = inBuf(ch)
+        System.arraycopy(convBuf, stepSize, convBuf, 0, overLen)
+        ch += 1
+      }
 
-         if( step == 0 ) { // stupid one instance case
-            inOff = overLen
-            inLen = stepSize
-         }
-      step += 1 }}
-   }
+      if (step == 0) {
+        // stupid one instance case
+        inOff = overLen
+        inLen = stepSize
+      }
+      step += 1
+    }
+  }
 
   // XXX THIS NEEDS BIGGER BUFSIZE BECAUSE NOW WE SEEK IN THE SAME FILE
   // FOR INPUT AND OUTPUT!!!
   private def secondaryRender(ws: WorkingSonogram, in: DecimationSpec, out: DecimationSpec) {
-    val dec = out.decimFactor
-    val bufSize = dec * numKernels
-    val buf = Array.ofDim[Float](numChannels, bufSize)
+    val dec         = out.decimFactor
+    val bufSize     = dec * numKernels
+    val buf         = Array.ofDim[Float](numChannels, bufSize)
     // since dec is supposed to be even, this
     // lands on the beginning of a kernel:
-    var inOff = bufSize / 2
-    var inLen = bufSize - inOff
+    var inOff       = bufSize / 2
+    var inLen       = bufSize - inOff
     var windowsRead = 0L
 
-    {
-      var step = 0
-      while (step < out.numWindows && !ws.isCancelled) {
-        val chunkLen = min(inLen, (in.numWindows - windowsRead) * numKernels).toInt
-        sync.synchronized {
-          seekWindow(in, windowsRead)
-          decimAF.read(buf, inOff, chunkLen)
-        }
-        windowsRead += chunkLen / numKernels
-        if (chunkLen < inLen) {
-          {
-            var ch = 0
-            while (ch < numChannels) {
-              ju.Arrays.fill(buf(ch), inOff + chunkLen, bufSize, 0f)
-              ch += 1
-            }
-          }
-        }
-        {
-          var ch = 0
-          while (ch < numChannels) {
-            val convBuf = buf(ch)
-            var i = 0
-            while (i < numKernels) {
-              var sum = 0f
-              var j = i
-              while (j < bufSize) {
-                sum += convBuf(j)
-                j   += numKernels
-              }
-              convBuf(i) = sum / dec
-              i += 1
-            }
-            ch += 1
-          }
-        }
-
-        sync.synchronized {
-          seekWindow(out, out.windowsReady)
-          decimAF.write(buf, 0, numKernels)
-          out.windowsReady += 1
-        }
-
-        if (step == 0) {
-          // stupid one instance case
-          inOff = 0
-          inLen = bufSize
-        }
-        step += 1
+    var step = 0
+    var ch = 0
+    while (step < out.numWindows && !ws.isCancelled) {
+      val chunkLen = math.min(inLen, (in.numWindows - windowsRead) * numKernels).toInt
+      sync.synchronized {
+        seekWindow(in, windowsRead)
+        decimAF.read(buf, inOff, chunkLen)
       }
+      windowsRead += chunkLen / numKernels
+      if (chunkLen < inLen) {
+        ch = 0
+        while (ch < numChannels) {
+          ju.Arrays.fill(buf(ch), inOff + chunkLen, bufSize, 0f)
+          ch += 1
+        }
+      }
+      ch = 0
+      while (ch < numChannels) {
+        val convBuf = buf(ch)
+        var i = 0
+        while (i < numKernels) {
+          var sum = 0f
+          var j = i
+          while (j < bufSize) {
+            sum += convBuf(j)
+            j   += numKernels
+          }
+          convBuf(i) = sum / dec
+          i += 1
+        }
+        ch += 1
+      }
+
+      sync.synchronized {
+        seekWindow(out, out.windowsReady)
+        decimAF.write(buf, 0, numKernels)
+        out.windowsReady += 1
+      }
+
+      if (step == 0) {
+        // stupid one instance case
+        inOff = 0
+        inLen = bufSize
+      }
+      step += 1
     }
   }
 
@@ -326,7 +358,7 @@ private[sonogram] class OverviewImpl(mgr: OverviewManager, val fileSpec: FileSpe
     if (!disposed) {
       disposed = true
       releaseListeners()
-      mgr.releaseSonoImage(imgSpec)
+      manager.releaseSonoImage(imgSpec)
       decimAF.cleanUp() // XXX delete?
     }
   }

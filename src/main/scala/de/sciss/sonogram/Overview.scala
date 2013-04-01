@@ -27,22 +27,73 @@ package de.sciss.sonogram
 
 import java.awt.Graphics2D
 import de.sciss.model.Model
-import de.sciss.synth.io.AudioFile
-import impl.{OverviewImpl => Impl}
+import de.sciss.synth.io.{AudioFileSpec, AudioFile}
+import impl.{OverviewImpl => Impl, DecimationSpec}
+import de.sciss.processor.{Processor, ProcessorFactory}
+import java.io.{DataOutput, DataOutputStream, ByteArrayOutputStream, File, DataInput, DataInputStream, ByteArrayInputStream}
+import de.sciss.lucre.io.ImmutableSerializer
+import de.sciss.lucre.io
 
-object Overview {
-  sealed trait Update { val view: Overview }
-  final case class Complete(view: Overview) extends Update
+object Overview extends ProcessorFactory {
+  type Product  = Unit
+  type Repr     = Overview
 
-  type Listener = Model.Listener[Update]
+  object Config {
+    private final val COOKIE = 0x53000001 // 'Ttm ', 'S' version 1
 
-  def apply(manager: OverviewManager, file: FileSpec, decimation: AudioFile): Overview =
-    new Impl(manager, file, decimation)
+    implicit object Serializer extends ImmutableSerializer[Config] {
+      def write(v: Config, out: io.DataOutput) {
+        import v._
+        out.writeInt(COOKIE)
+        out.writeUTF(file.getCanonicalPath)
+        AudioFileSpec.Serializer.write(fileSpec, out)
+        out.writeLong(lastModified)
+        SonogramSpec.Serializer.write(sonogram, out)
+        out.writeShort(decimation.size)
+        decimation.foreach(out.writeShort _)
+      }
+
+      def read(in: io.DataInput): Config = {
+        val cookie = in.readInt()
+        require(cookie == COOKIE, s"Unexpected cookie $cookie")
+        val file          = new File(in.readUTF())
+        val fileSpec      = AudioFileSpec.Serializer.read(in)
+        val lastModified  = in.readLong()
+        val sonogram      = SonogramSpec.Serializer.read(in)
+        val numDecim      = in.readShort()
+        val decimation    = List.fill(numDecim)(in.readShort().toInt)
+        Config(file, fileSpec, lastModified, sonogram, decimation)
+      }
+    }
+  }
+  /** The configuration of an overview generation.
+    *
+    * @param file         The input audio file.
+    * @param fileSpec     The specification of the input audio file.
+    * @param lastModified The time stamp of the input audio file.
+    * @param sonogram     The sonogram analysis specification.
+    * @param decimation   The decimation specification.
+    */
+  final case class Config(file: File, fileSpec: AudioFileSpec, lastModified: Long, sonogram: SonogramSpec,
+                          decimation: List[Int])
+
+//  private def makeAllAvailable() {
+//    decimSpecs.foreach(d => d.windowsReady = d.numWindows)
+//  }
+
+//  private[sonogram] def expectedDecimNumFrames =
+//    decimSpecs.last.offset + decimSpecs.last.numWindows * sono.numKernels
+
+//  def apply(manager: OverviewManager, file: FileSpec, decimation: AudioFile): Overview =
+//    new Impl(manager, file, decimation)
+
+  protected def prepare(config: Config): Prepared =
+    new Impl(config, ???, ???)
 
   var verbose = false
 }
-trait Overview extends Model[Overview.Update] {
-  def fileSpec: FileSpec
+trait Overview extends Processor[Unit, Overview] {
+  def config: Overview.Config
 
   def paint(spanStart: Double, spanStop: Double, g2: Graphics2D, tx: Int, ty: Int, width: Int, height: Int,
             ctrl: PaintController): Unit

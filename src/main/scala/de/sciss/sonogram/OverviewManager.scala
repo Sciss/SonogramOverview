@@ -29,7 +29,7 @@ package de.sciss.sonogram
 import impl.{Image, ImageSpec, WorkingSonogram}
 import java.awt.image.BufferedImage
 import java.beans.{PropertyChangeEvent, PropertyChangeListener}
-import java.io.{File, IOException}
+import java.io.File
 import javax.swing.SwingWorker
 import collection.immutable.{Queue => IQueue}
 import math._
@@ -54,14 +54,16 @@ import de.sciss.synth.io.{SampleFormat, AudioFileType, AudioFileSpec, AudioFile}
 //  }
 //}
 abstract class OverviewManager {
-   mgr =>
+  mgr =>
 
-   import Overview._
+  import Overview._
 
-   // ---- subclass must define these abstract methods ----
-   def appCode: String // APPCODE  = "Ttm "
-//   def fileCache: CacheManager
-   protected def createCacheFileName( path: File ) : File
+  // ---- subclass must define these abstract methods ----
+  def appCode: String
+
+  // APPCODE  = "Ttm "
+  //   def fileCache: CacheManager
+  protected def createCacheFileName(path: File): File
 
   private var constQCache   = Map[SonogramSpec, ConstQCache]()
   private var imageCache    = Map[(Int, Int), ImageCache]()
@@ -93,8 +95,8 @@ abstract class OverviewManager {
         maxFFTSize = 4096, stepSize = stepSize)
 
       val decim       = List(1, 6, 6, 6, 6)
-      val fileSpec    = new FileSpec(sono = sonoSpec, lastModified = file.lastModified, audioPath = file,
-        numFrames = afDescr.numFrames, numChannels = afDescr.numChannels, sampleRate = sampleRate, decim)
+      val fileSpec    = Overview.Config(file = file, fileSpec = afDescr, sonogram = sonoSpec,
+        lastModified = file.lastModified, decimation = decim)
       // val cachePath     = fileCache.createCacheFileName( path )
       val cachePath = createCacheFileName(file)
 
@@ -128,10 +130,11 @@ abstract class OverviewManager {
         AudioFile.openWrite(cachePath, d) // XXX eventually should use shared buffer!!
       }
 
-      val so = Overview(mgr, fileSpec, decimAF)
-      // render overview if necessary
-      if (decimAFO.isEmpty) queue(so)
-      so
+???
+//      val so = Overview(mgr, fileSpec, decimAF)
+//      // render overview if necessary
+//      if (decimAFO.isEmpty) queue(so)
+//      so
     }
   }
 

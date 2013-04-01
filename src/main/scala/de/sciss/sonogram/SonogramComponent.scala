@@ -28,6 +28,7 @@ package de.sciss.sonogram
 import javax.swing.JComponent
 import java.awt.{ Color, Graphics, Graphics2D }
 import java.awt.image.ImageObserver
+import de.sciss.processor.Processor
 
 class SonogramComponent
   extends JComponent with PaintController {
@@ -46,7 +47,7 @@ class SonogramComponent
     g2.setColor(Color.white)
     g2.drawString("Calculating...", 8, 20)
     sonoO.foreach { sono =>
-      sono.paint(0L, sono.fileSpec.numFrames, g2, x, y, w, h, this)
+      sono.paint(0L, sono.config.fileSpec.numFrames, g2, x, y, w, h, this)
     }
   }
 
@@ -71,8 +72,7 @@ class SonogramComponent
 
   // ---- SonogramOverviewListener ----
 
-  private val listener: Overview.Listener = {
-    case Overview.Complete(_) => repaint()
-    case _ =>
+  private val listener: Overview.Observer = {
+    case Processor.Progress(_, _) => repaint()
   }
 }
