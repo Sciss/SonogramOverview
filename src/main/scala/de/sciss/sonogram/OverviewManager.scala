@@ -28,11 +28,30 @@ package de.sciss.sonogram
 
 import java.io.File
 import de.sciss.dsp.ConstQ
+import de.sciss.model.Model
+import util.Try
 
 object OverviewManager {
-  final case class Config(file: File, analysis: ConstQ.Config = ConstQ.Config())
+  final case class Job(file: File, analysis: ConstQ.Config = ConstQ.Config())
+
+  sealed trait Update { def overview: Overview }
+  final case class Progress(overview: Overview, percent: Float) extends Update {
+    def toInt = (percent * 100).toInt
+  }
+  final case class Result(overview: Overview, value: Try[Unit]) extends Update
+
+  final case class Caching(folder: File, sizeLimit: Int = -1, timeLimit: Long = -1L)
+
+  def apply(caching: Option[Caching] = None): OverviewManager = ???
 }
-trait OverviewManager {
+trait OverviewManager extends Model[OverviewManager.Update] {
+  import OverviewManager._
+
+  def submit(job: Job): Overview
+  def dispose(): Unit
+
+  def caching: Option[Caching]
+
 //  /**
 //   * Creates a new sonogram overview from a given audio file
 //   *

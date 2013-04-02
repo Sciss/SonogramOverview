@@ -28,18 +28,16 @@ package de.sciss.sonogram
 import java.awt.Graphics2D
 import de.sciss.model.Model
 import de.sciss.synth.io.{AudioFileSpec, AudioFile}
-import impl.{OverviewImpl => Impl, DecimationSpec}
-import de.sciss.processor.{Processor, ProcessorFactory}
-import java.io.{DataOutput, DataOutputStream, ByteArrayOutputStream, File, DataInput, DataInputStream, ByteArrayInputStream}
-import de.sciss.lucre.io.ImmutableSerializer
-import de.sciss.lucre.io
+import de.sciss.processor.Processor
+import java.io.File
+import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object Overview {
   object Config {
     private final val COOKIE = 0x53000001 // 'Ttm ', 'S' version 1
 
     implicit object Serializer extends ImmutableSerializer[Config] {
-      def write(v: Config, out: io.DataOutput) {
+      def write(v: Config, out: DataOutput) {
         import v._
         out.writeInt(COOKIE)
         out.writeUTF(file.getCanonicalPath)
@@ -50,7 +48,7 @@ object Overview {
         decimation.foreach(out.writeShort _)
       }
 
-      def read(in: io.DataInput): Config = {
+      def read(in: DataInput): Config = {
         val cookie = in.readInt()
         require(cookie == COOKIE, s"Unexpected cookie $cookie")
         val file          = new File(in.readUTF())

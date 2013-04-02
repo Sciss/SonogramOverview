@@ -13,11 +13,11 @@ licenses := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
 scalaVersion := "2.10.1"
 
 libraryDependencies ++= Seq(
-  "de.sciss" %% "scalaaudiofile"   % "1.3.+",
+  "de.sciss" %% "scalaaudiofile"   % "1.4.+",
   "de.sciss" %% "scissdsp"         % "1.1.+",
   "de.sciss" %  "intensitypalette" % "1.0.0",
   "de.sciss" %% "processor"        % "0.1.+",
-  "de.sciss" %% "span"             % "1.1.+"
+  "de.sciss" %% "span"             % "1.2.+"
 )
 
 retrieveManaged := true

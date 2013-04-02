@@ -1,14 +1,13 @@
 package de.sciss.sonogram
 
 import de.sciss.dsp.ConstQ
-import de.sciss.lucre.io.ImmutableSerializer
-import de.sciss.lucre.io
+import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object SonogramSpec {
   implicit object Serializer extends ImmutableSerializer[SonogramSpec] {
     private val COOKIE = 0
 
-    def write(v: SonogramSpec, out: io.DataOutput) {
+    def write(v: SonogramSpec, out: DataOutput) {
       import v._
       out.writeByte(COOKIE)
       out.writeDouble(sampleRate)
@@ -20,7 +19,7 @@ object SonogramSpec {
       out.writeInt(stepSize)
     }
 
-    def read(in: io.DataInput): SonogramSpec = {
+    def read(in: DataInput): SonogramSpec = {
       val cookie = in.readByte()
       require(cookie == COOKIE, s"Unexpected cookie $cookie")
       val sampleRate  = in.readDouble()
