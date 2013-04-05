@@ -30,8 +30,30 @@ import java.io.File
 import de.sciss.dsp.ConstQ
 import de.sciss.model.Model
 import util.Try
+import impl.{OverviewManagerImpl => Impl}
+import de.sciss.serial.{DataOutput, DataInput, ImmutableSerializer}
 
 object OverviewManager {
+  object Job {
+    implicit object Serializer extends ImmutableSerializer[Job] {
+      private final val COOKIE = 0x4a6f
+
+      def write(v: Job, out: DataOutput) {
+        import v._
+        out.writeShort(COOKIE)
+        out.writeUTF(file.getPath)
+        ConstQ.Config.Serializer.write(analysis, out)
+      }
+
+      def read(in: DataInput): Job = {
+        val cookie = in.readShort()
+        require(cookie == COOKIE, s"Unexpected cookie $cookie")
+        val file      = new File(in.readUTF())
+        val analysis  = ConstQ.Config.Serializer.read(in)
+        new Job(file = file, analysis = analysis)
+      }
+    }
+  }
   final case class Job(file: File, analysis: ConstQ.Config = ConstQ.Config())
 
   sealed trait Update { def overview: Overview }
@@ -40,9 +62,14 @@ object OverviewManager {
   }
   final case class Result(overview: Overview, value: Try[Unit]) extends Update
 
-  final case class Caching(folder: File, sizeLimit: Int = -1, timeLimit: Long = -1L)
+  /** Cache settings.
+    *
+    * @param folder     the folder to use for caching
+    * @param sizeLimit  the maximum size of the cache in bytes
+    */
+  final case class Caching(folder: File, sizeLimit: Long = -1L)
 
-  def apply(caching: Option[Caching] = None): OverviewManager = ???
+  def apply(caching: Option[Caching] = None): OverviewManager = new Impl(caching)
 }
 trait OverviewManager extends Model[OverviewManager.Update] {
   import OverviewManager._

@@ -34,12 +34,12 @@ import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object Overview {
   object Config {
-    private final val COOKIE = 0x53000001 // 'Ttm ', 'S' version 1
+    private final val COOKIE = 0x4f56
 
     implicit object Serializer extends ImmutableSerializer[Config] {
       def write(v: Config, out: DataOutput) {
         import v._
-        out.writeInt(COOKIE)
+        out.writeShort(0x4f56)
         out.writeUTF(file.getCanonicalPath)
         AudioFileSpec.Serializer.write(fileSpec, out)
         out.writeLong(lastModified)
@@ -49,7 +49,7 @@ object Overview {
       }
 
       def read(in: DataInput): Config = {
-        val cookie = in.readInt()
+        val cookie = in.readShort()
         require(cookie == COOKIE, s"Unexpected cookie $cookie")
         val file          = new File(in.readUTF())
         val fileSpec      = AudioFileSpec.Serializer.read(in)

@@ -34,7 +34,9 @@ import de.sciss.synth.io.{AudioFile, Frames}
 import util.control.NonFatal
 import de.sciss.sonogram.ResourceManager.{Image, ImageSpec}
 import de.sciss.model.impl.ModelImpl
-import de.sciss.serial.DataInput
+import de.sciss.serial.{ImmutableSerializer, DataInput}
+import de.sciss.filecache.{Consumer, Limit, Producer}
+import scala.concurrent.Future
 
 class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
   extends OverviewManager with ModelImpl[OverviewManager.Update] {
@@ -43,13 +45,13 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
 
   import OverviewManager._
 
-//  /** Creates the file for the overview cache meta data. It should have a filename extension,
-//    * and the manager will store the overview binary data in a file with the same prefix but
-//    * different filename extension.
-//    *
-//    * @param path   the audio input file to derive the cache from
-//    */
-//  protected def createCacheFile(path: File): File
+  //  /** Creates the file for the overview cache meta data. It should have a filename extension,
+  //    * and the manager will store the overview binary data in a file with the same prefix but
+  //    * different filename extension.
+  //    *
+  //    * @param path   the audio input file to derive the cache from
+  //    */
+  //  protected def createCacheFile(path: File): File
 
   /** This is a constant, but can be overridden by subclasses. */
   protected val decimation  = List(1, 6, 6, 6, 6)
@@ -59,6 +61,34 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
   private var fileBufCache  = Map.empty[ImageSpec, FileBufCache]
   private var overviews     = Map.empty[Job, Overview]
   private val sync          = new AnyRef
+
+  private val producer      = {
+    val cc = Producer.Config[Job, File]()
+    cc.extension  = "sono"
+    cc.accept     = (decimF: File) => true
+    cc.space      = (decimF: File) => decimF.length()
+    cc.evict      = (decimF: File) => decimF.delete()
+
+    caching match {
+      case Some(c) =>
+        cc.capacity = Limit(space = c.sizeLimit)
+        cc.folder   = c.folder
+
+      case _ =>
+        cc.capacity = Limit(count = 0, space = 0L)
+        val f = File.createTempFile(".cache", "")
+        f.delete()
+        f.mkdir()
+        f.deleteOnExit()
+        cc.folder   = f
+    }
+    Producer(cc)
+  }
+
+  private val consumer = Consumer(producer) { job =>
+
+    ??? : Future[File]
+  }
 
   /**
    * Creates a new sonogram overview from a given audio file
@@ -76,6 +106,12 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
   }
 
   private def newJob(job: Job): Overview = {
+    val spec = AudioFile.readSpec(job.file)
+
+    ???
+  }
+
+  private def gagaismo(job: Job): Overview = {
     val inF         = job.file
     val in          = AudioFile.openRead(inF)
     val inSpec      = in.spec
