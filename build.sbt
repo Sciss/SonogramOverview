@@ -18,6 +18,7 @@ libraryDependencies ++= Seq(
   "de.sciss" %  "intensitypalette" % "1.0.0",
   "de.sciss" %% "processor"        % "0.1.+",
   "de.sciss" %% "filecache"        % "0.1.+",
+  "de.sciss" %% "model"            % "0.2.2+",
   "de.sciss" %% "span"             % "1.2.+"
 )
 

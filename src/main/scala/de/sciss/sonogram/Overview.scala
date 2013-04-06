@@ -120,7 +120,7 @@ object Overview {
   //  def apply(manager: OverviewManager, file: FileSpec, decimation: AudioFile): Overview =
   //    new Impl(manager, file, decimation)
 
-  var verbose = false
+  // var verbose = false
 
   //  def openRead (config: Config,    decimation: AudioFile,    manager: OverviewManager): Overview = ...
   //  def openWrite(config: Config, /* decimation: AudioFile, */ manager: OverviewManager): Overview = ...

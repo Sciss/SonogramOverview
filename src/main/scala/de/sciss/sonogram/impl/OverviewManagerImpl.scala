@@ -114,6 +114,12 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
           val res    = new OverviewImpl(ovrSpec, ovrIn, manager = this, /* folder = folder, */ producer = producer)
           overviews += ovrSpec -> res
           import producer.executionContext
+          res.addListener {
+            case x => println(s"Observed $x - ${x.getClass}")
+          }
+          res.onFailure {
+            case x => x.printStackTrace()
+          }
           // res.start()
           res
       }

@@ -31,6 +31,8 @@ import javax.swing.{JFrame, JSlider, SwingConstants, WindowConstants}
 import javax.swing.event.{ChangeEvent, ChangeListener}
 import de.sciss.dsp.Util
 import util.control.NonFatal
+import de.sciss.processor.Processor
+import scala.util.{Failure, Success}
 
 object Demo extends App with Runnable {
   import Util.dbamp
@@ -53,6 +55,9 @@ object Demo extends App with Runnable {
       val path    = new File(fDir, fName)
       val mgr     = OverviewManager()
       val ov      = mgr.submit(OverviewManager.Job(path))
+      //      ov.addListener {
+      //        case Processor.Result(_, Failure(e)) => e.printStackTrace()
+      //      }
       val view    = new SonogramComponent
       view.boost  = 4f
       view.sono   = Some(ov)

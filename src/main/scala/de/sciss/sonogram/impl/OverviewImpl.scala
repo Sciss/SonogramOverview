@@ -39,9 +39,11 @@ import java.io.File
 import scala.concurrent.blocking
 import de.sciss.filecache.Producer
 import Overview.{Output => OvrOut, Input => OvrIn, Config => OvrSpec}
+import scala.annotation.elidable
 
 private[sonogram] object OverviewImpl {
   private lazy val log10 = FastLog(base = 10, q = 11)
+  @elidable(elidable.CONFIG) def debug(what: => String) { println(s"<overview> $what") }
 }
 
 private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
@@ -51,22 +53,11 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
 
   import OverviewImpl._
 
+  private var disposed    = false
   val inputSpec           = input.fileSpec
-  private val futOut      = producer.acquireWith(config, this)
 
   // synchronized via sync
   private var futRes: AudioFile = _
-
-  start()(producer.executionContext)
-
-  futOut.onSuccess {
-    case OvrOut(_, f) =>
-      sync.synchronized {
-        if (!disposed && futRes == null) {
-          futRes = AudioFile.openRead(f)
-        }
-      }
-  }
 
   private val sync        = new AnyRef
   private val numChannels = inputSpec.numChannels
@@ -100,11 +91,21 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
     })(breakOut)
   }
 
-  private def getBestDecim(idealDecim: Float): DecimationSpec = {
-    var i = 0
-    while (i < decimSpecs.length && decimSpecs(i).totalDecim < idealDecim) i += 1
-    decimSpecs(i)
-  }
+  // ---- submission and start ----
+
+  private val futOut      = producer.acquireWith(config, this)
+  futOut.onSuccess({
+    case OvrOut(_, f) =>
+      sync.synchronized {
+        if (!disposed && futRes == null) {
+          futRes = AudioFile.openRead(f)
+        }
+      }
+  })(producer.executionContext) // crucial not to demand context from Processor trait because that is not known yet
+
+  start()(producer.executionContext)
+
+  // ---- public ----
 
   //   val rnd = new java.util.Random()
   def paint(spanStart: Double, spanStop: Double, g2: Graphics2D, tx: Int,
@@ -232,18 +233,41 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
     }
   }
 
+  def dispose() {
+    sync.synchronized(
+      if (!disposed) {
+        disposed = true
+        releaseListeners()
+        manager.releaseImage(imgSpec)
+        // decimAF.cleanUp()
+        futOut.onSuccess {
+          case _ => sync.synchronized {
+            futRes.cleanUp()   // XXX delete?
+            futRes = null
+          }
+        }
+      }
+    )
+  }
+
+  // ---- protected ----
+
   protected def body(): OvrOut = blocking {
+    debug("enter body")
     val constQ = manager.allocateConstQ(config.sonogram)
     // val fftSize = constQ.getFFTSize
-    val t1 = System.currentTimeMillis
+    // val t1 = System.currentTimeMillis
     var daf: AudioFile = null
     val f = File.createTempFile("sono", ".au", producer.config.folder)
+    debug(s"created decim file $f")
     try {
       val af = AudioFile.openRead(config.file)
+      debug(s"opened input file ${config.file}")
       try {
         val afd = AudioFileSpec(AudioFileType.NeXT, SampleFormat.Float,
           numChannels = inputSpec.numChannels, sampleRate = inputSpec.sampleRate)
-        daf     = AudioFile.openWrite(f, afd)
+        daf = AudioFile.openWrite(f, afd)
+        debug(s"opened decim file")
         sync.synchronized { futRes = daf }
         try {
           primaryRender(daf, constQ, af)
@@ -258,7 +282,7 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
     finally {
       manager.releaseConstQ(config.sonogram)
     }
-    val t2      = System.currentTimeMillis
+    // val t2      = System.currentTimeMillis
     var idxIn   = 0
     var idxOut  = 1
     while (idxOut < decimSpecs.length) {
@@ -270,13 +294,23 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
       idxOut += 1
     }
     daf.flush()
-    val t3 = System.currentTimeMillis
-    if (Overview.verbose) println("primary : secondary ratio = " + (t2 - t1).toDouble / (t3 - t2))
+    // val t3 = System.currentTimeMillis
+    // if (Overview.verbose) println("primary : secondary ratio = " + (t2 - t1).toDouble / (t3 - t2))
 
+    debug(s"body exit")
     OvrOut(input, f)
   }
 
+  // ---- private ----
+
+  private def getBestDecim(idealDecim: Float): DecimationSpec = {
+    var i = 0
+    while (i < decimSpecs.length && decimSpecs(i).totalDecim < idealDecim) i += 1
+    decimSpecs(i)
+  }
+
   private def primaryRender(daf: AudioFile, constQ: ConstQ, in: AudioFile) {
+    debug(s"enter primaryRender")
     val fftSize     = constQ.fftSize
     val stepSize    = config.sonogram.stepSize
     val inBuf       = Array.ofDim[Float](numChannels, fftSize)
@@ -336,6 +370,7 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
   // XXX THIS NEEDS BIGGER BUFSIZE BECAUSE NOW WE SEEK IN THE SAME FILE
   // FOR INPUT AND OUTPUT!!!
   private def secondaryRender(daf: AudioFile, in: DecimationSpec, out: DecimationSpec) {
+    debug(s"enter secondaryRender")
     val dec         = out.decimFactor
     val bufSize     = dec * numKernels
     val buf         = Array.ofDim[Float](numChannels, bufSize)
@@ -393,24 +428,5 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
       }
       step += 1
     }
-  }
-
-  private var disposed = false
-
-  def dispose() {
-    sync.synchronized(
-      if (!disposed) {
-        disposed = true
-        releaseListeners()
-        manager.releaseImage(imgSpec)
-        // decimAF.cleanUp()
-        futOut.onSuccess {
-          case _ => sync.synchronized {
-            futRes.cleanUp()   // XXX delete?
-            futRes = null
-          }
-        }
-      }
-    )
   }
 }
