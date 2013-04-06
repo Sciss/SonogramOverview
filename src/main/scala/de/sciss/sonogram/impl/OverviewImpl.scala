@@ -62,7 +62,7 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
   private val sync        = new AnyRef
   private val numChannels = inputSpec.numChannels
   private val numKernels  = config.sonogram.numKernels
-  private val imgSpec     = ImageSpec(numChannels, width = 128, height = numKernels)
+  private val imgSpec     = ImageSpec(numChannels, width = 256 /* 128 */, height = numKernels)
   private val sonoImg     = manager.allocateImage(imgSpec)
   private val imgData     = sonoImg.img.getRaster.getDataBuffer.asInstanceOf[DataBufferInt].getData
 
@@ -117,36 +117,53 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
     val daf  = futRes
     if (daf == null) return
 
+    // the ideal decimation factor is input span divided by screen span
     val idealDecim  = ((spanStop - spanStart) / width).toFloat
+    // find the greatest factor that is less than or equal to this ideal factor
+    // (it might be greater than idealDecim is we zoomed in close enough)
     val in          = getBestDecim(idealDecim)
-    // val scaleW        = idealDecim / in.totalDecim
-    val scaleW      = in.totalDecim / idealDecim
-    val vDecim      = math.max(1, (numChannels * numKernels) / height)
-    val numVFull    = numKernels / vDecim
-    // val vRemain       = numKernels % vDecim
-    // val hasVRemain    = vRemain != 0
-    val scaleH      = height.toFloat / (numChannels * numVFull)
-    val startD      = spanStart / in.totalDecim
-    val start       = startD.toLong // i.e. trunc
-    // val transX = (-(startD % 1.0) / idealDecim).toFloat
-    val transX      = (-(startD % 1.0) * scaleW).toFloat
-    val stop        = math.ceil(spanStop / in.totalDecim).toLong // XXX include startD % 1.0 ?
+    // the live decimation is the the integer floor of ideal decimation
+    // divided by provided decimation.
+    val hDecim      = math.max(1, (idealDecim / in.totalDecim).toInt)
+    // the according horizontal graphics context scale for drawing the image
+    val hScale      = (in.totalDecim * hDecim) / idealDecim
 
+    // the vertical decimation factor is input num bands * num-channels divided by screen span
+    // (this is the integer floor)
+    val vDecim      = math.max(1, (numChannels * numKernels) / height)
+    // the downsampled image height. the image only
+    // contains _one_ channel, and we iterate over the channels
+    // re-using the same image.
+    val numVFull    = numKernels / vDecim
+    // the according vertical graphics context scale for drawing the image
+    val vScale      = height.toFloat / (numChannels * numVFull)
+    // the start frame in the decimated file (fractional)
+    val startD      = spanStart / in.totalDecim
+    // ...and rounded down to integer, actually seekable frame
+    val start       = startD.toLong
+    // due to this rounding, the image drawing might need to start offset to the left
+    val transX      = (-(startD % 1.0) * hScale).toFloat
+    // the stop frame in the decimated file
+    val stop        = math.ceil(spanStop / in.totalDecim).toLong
+
+    // ???
     var windowsRead = 0L
     val imgW        = imgSpec.width
+    // the offset in the image buffer of the
+    // left most pixel in the last line
+    // (because frequencies are shown bottom-up)
     val iOffStart   = (numVFull - 1) * imgW
     val l10         = log10
-    // val c             = IntensityColorScheme.colors
 
-    val pixScale    = 1f / 6 // 1072 / bels span
-    val pixOff      = 6f // bels floor
+    // colour coding
+    val pixScale    = 1f / 6  // 1072 / bels span
+    val pixOff      = 6f      // bels floor
     val iBuf        = imgData
-    // val numK          = numKernels
 
     val atOrig = g2.getTransform
     try {
       g2.translate(tx + transX, ty)
-      g2.scale(scaleW, scaleH)
+      g2.scale    (hScale, vScale)
       var xOff      = 0
       var yOff      = 0
       var fOff      = 0
@@ -155,38 +172,45 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
       var v         = 0
       var i         = 0
       var sum       = 0f
-      var xReset    = 0
-      var firstPass = true
+// OOO
+//      var xReset    = 0
+//      var firstPass = true
       sync.synchronized {
         if (in.windowsReady <= start) return // or draw busy-area
-        seekWindow(daf, in, start)
+        seekWindow(daf, in, start)  // continuously read from here
+        // the in-file decimated frames to go
         val numWindows = math.min(in.windowsReady, stop) - start
         while (windowsRead < numWindows) {
-          val chunkLen2 = math.min(imgW - xReset, numWindows - windowsRead).toInt
-          val chunkLen  = chunkLen2 + xReset
+          // the in-file chunk length is either the available image buffer width, or the windows left.
+          val chunkLen2 = math.min((imgW /* OOO - xReset */), numWindows - windowsRead).toInt
+          // ???
+          val chunkLen  = chunkLen2 // OOO + xReset
+          // remember that the decimated file groups kernels together in subsequent frames,
+          // so we need to multiply the logical number of frames by the number of kernels
           daf.read(sonoImg.fileBuf, 0, chunkLen2 * numKernels)
           windowsRead += chunkLen2
-          if (firstPass) {
-            firstPass = false
-          } else {
-            xReset  = 4 // overlap
-            iOff    = 0
-            v       = 0
-            while (v < numVFull) {
-              iBuf(iOff)     = iBuf(iOff + imgW - 4)
-              iBuf(iOff + 1) = iBuf(iOff + imgW - 3)
-              iBuf(iOff + 2) = iBuf(iOff + imgW - 2)
-              iBuf(iOff + 3) = iBuf(iOff + imgW - 1)
-              v    += 1
-              iOff += imgW
-            }
-          }
+// OOO
+//          if (firstPass) {
+//            firstPass = false
+//          } else {      // if not in the first pass, we have a horizontal image overlap going on
+//            xReset  = 4 // the overlap in pixels
+//            iOff    = 0
+//            v       = 0
+//            while (v < numVFull) {
+//              iBuf(iOff)     = iBuf(iOff + imgW - 4)
+//              iBuf(iOff + 1) = iBuf(iOff + imgW - 3)
+//              iBuf(iOff + 2) = iBuf(iOff + imgW - 2)
+//              iBuf(iOff + 3) = iBuf(iOff + imgW - 1)
+//              v    += 1
+//              iOff += imgW
+//            }
+//          }
           yOff   = 0
           var ch = 0
           while (ch < numChannels) {
             val fBuf = sonoImg.fileBuf(ch)
             fOff = 0
-            x    = xReset
+            x    = 0 // OOO xReset
             while (x < chunkLen) {
               iOff = iOffStart + x
               v    = 0
@@ -198,35 +222,22 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
                   fOff += 1
                   i    += 1
                 }
-                val amp = ctrl.adjustGain(sum / vDecim, (iOff + xOff) / scaleW)
+                val amp = ctrl.adjustGain(sum / vDecim, (iOff + xOff) / hScale)
                 iBuf(iOff) = IntensityPalette.apply(
                   (l10.calc(math.max(1.0e-9f, amp)) + pixOff) * pixScale
                 )
                 v   += 1
                 iOff -= imgW
               }
-              /*
-               if( hasVRemain ) {
-                  var sum = fBuf( fOff )
-                  fOff += 1
-                  var i = 0; while( i < vRemain ) {
-                     sum += fBuf( fOff )
-                     fOff += 1; i += 1
-                  }
-                  val ampLog = l10.calc( max( 1.0e-9f, sum / vRemain ))
-                  iBuf( iOff ) = c( max( 0, min( 1072, ((ampLog + pixOff) * pixScale).toInt )))
-                  iOff += imgW
-               }
-              */
               x += 1
             }
-            //                  g2.drawImage( sonoImg.img, xOff, yOff, observer )
+            // g2.drawImage( sonoImg.img, xOff, yOff, observer )
             g2.drawImage(sonoImg.img, xOff, yOff, xOff + chunkLen, yOff + numVFull,
                          0, 0, chunkLen, numVFull, ctrl.imageObserver)
             ch   += 1
             yOff += numVFull
           }
-          xOff += chunkLen - 4
+          xOff += chunkLen // OOO - 4
         }
       }
     }
@@ -286,6 +297,9 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
             idxOut += 1
           }
           daf.flush()
+          // well... currently the sequential downsampling doesn't really
+          // permit incremental progress notifications :-(
+          progress(1f)
           success = true
         } finally {
           if (!success) daf.cleanUp()
@@ -306,9 +320,17 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
   // ---- private ----
 
   private def getBestDecim(idealDecim: Float): DecimationSpec = {
-    var i = 0
-    while (i < decimSpecs.length && decimSpecs(i).totalDecim < idealDecim) i += 1
-    decimSpecs(i)
+    val d0 = decimSpecs(0)
+    if (d0.totalDecim >= idealDecim) return d0
+    var i = 1
+    var pred = d0
+    while (i < decimSpecs.length) {
+      val di = decimSpecs(i)
+      if (di.totalDecim > idealDecim) return pred
+      pred = di
+      i += 1
+    }
+    pred
   }
 
   private def primaryRender(daf: AudioFile, constQ: ConstQ, in: AudioFile) {
@@ -372,7 +394,7 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
   // XXX THIS NEEDS BIGGER BUFSIZE BECAUSE NOW WE SEEK IN THE SAME FILE
   // FOR INPUT AND OUTPUT!!!
   private def secondaryRender(daf: AudioFile, in: DecimationSpec, out: DecimationSpec) {
-    debug("enter secondaryRender")
+    debug(s"enter secondaryRender ${in.decimFactor}")
     val dec         = out.decimFactor
     val bufSize     = dec * numKernels
     val buf         = Array.ofDim[Float](numChannels, bufSize)

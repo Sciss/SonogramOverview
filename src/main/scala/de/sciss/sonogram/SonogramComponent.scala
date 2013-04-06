@@ -26,7 +26,7 @@
 package de.sciss.sonogram
 
 import javax.swing.JComponent
-import java.awt.{ Color, Graphics, Graphics2D }
+import java.awt.{RenderingHints, Color, Graphics, Graphics2D}
 import java.awt.image.ImageObserver
 import de.sciss.processor.Processor
 
@@ -42,11 +42,12 @@ class SonogramComponent
     val y    = i.top
     val w    = getWidth - (i.left + i.right)
     val h    = getHeight - (i.top + i.bottom)
-    g2.setColor(Color.gray)
-    g2.fillRect(x, y, w, h)
-    g2.setColor(Color.white)
-    g2.drawString("Calculating...", 8, 20)
     sonoO.foreach { sono =>
+      g2.setColor(Color.gray)
+      g2.fillRect(x, y, w, h)
+      g2.setColor(Color.white)
+      g2.drawString("Calculating...", 8, 20)
+      g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
       sono.paint(0L, sono.inputSpec.numFrames, g2, x, y, w, h, this)
     }
   }
