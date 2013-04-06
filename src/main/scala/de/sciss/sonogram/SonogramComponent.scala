@@ -47,7 +47,11 @@ class SonogramComponent
       g2.fillRect(x, y, w, h)
       g2.setColor(Color.white)
       g2.drawString("Calculating...", 8, 20)
-      g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+      g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,  RenderingHints.VALUE_INTERPOLATION_BILINEAR)
+      // none of these have any visible influence:
+      //      g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,   RenderingHints.VALUE_ANTIALIAS_ON)
+      //      g2.setRenderingHint(RenderingHints.KEY_RENDERING,      RenderingHints.VALUE_RENDER_QUALITY)
+      //      g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE)
       sono.paint(0L, sono.inputSpec.numFrames, g2, x, y, w, h, this)
     }
   }

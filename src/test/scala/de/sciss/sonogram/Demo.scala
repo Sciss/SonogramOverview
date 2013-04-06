@@ -53,7 +53,10 @@ object Demo extends App with Runnable {
 
     try {
       val path    = new File(fDir, fName)
-      val mgr     = OverviewManager()
+//      val folder  = new File(sys.props("java.io.tmpdir"), "sono_demo")
+//      if (!folder.exists()) folder.mkdir()
+//      val cfg     = OverviewManager.Caching(folder, (1L << 20) * 256)
+      val mgr     = OverviewManager() // (Some(cfg))
       val ov      = mgr.submit(OverviewManager.Job(path))
       //      ov.addListener {
       //        case Processor.Result(_, Failure(e)) => e.printStackTrace()

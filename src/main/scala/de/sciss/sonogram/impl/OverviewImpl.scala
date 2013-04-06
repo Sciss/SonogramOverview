@@ -174,6 +174,8 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
 
       val uiw = imgW - (imgW % hDecim)  // used image width: largest width being a multiple of the h decimation
 
+      // debug(f"paint span $spanStart%1.1f...$spanStop%1.1f on $width (ideal $idealDecim%1.2f, file ${in.totalDecim}, inplace $hDecim); hScale $hScale%1.4f")
+
       sync.synchronized {
         if (in.windowsReady <= start) return // or draw busy-area
         seekWindow(daf, in, start)  // continuously read from here
@@ -189,6 +191,8 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
           // so we need to multiply the logical number of frames by the number of kernels
           daf.read(sonoImg.fileBuf, 0, chunkLen2 * numKernels)  // OOO TODO: here is where the offset goes
           windowsRead += chunkLen2
+
+          // debug(s"chunkLen $chunkLen; w $w")
 // OOO
 //          if (firstPass) {
 //            firstPass = false
@@ -209,22 +213,23 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
           var ch = 0
           while (ch < numChannels) {
             val fBuf  = sonoImg.fileBuf(ch)
-            var fOff  = 0
             var x     = 0      // OOO xReset
             var frame = 0
             var ehd   = hDecim // effective horizontal decimation
             while (x < w) {
-              iOff  = iOffStart + x
+              iOff      = iOffStart + x
               if (frame + ehd > chunkLen) ehd = chunkLen - frame
-              var y = 0
+              var y     = 0
+              var fOff  = frame * numKernels
               while (y < uih) {
-                var sum = fBuf(fOff)
-                var vdi = 0
+                var sum   = fBuf(fOff)
+                var vdi   = 0
                 while (vdi < vDecim) {
                   var hdi   = 0
                   var fOff2 = fOff
                   while (hdi < ehd) {
                     sum   += fBuf(fOff2)
+                    // sum = math.max(sum, fBuf(fOff2))
                     hdi   += 1
                     fOff2 += numKernels // = imgH
                   }
@@ -440,6 +445,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
           var j = i
           while (j < bufSize) {
             sum += convBuf(j)
+            // sum = math.max(sum, convBuf(j))
             j   += numKernels
           }
           convBuf(i) = sum / dec
