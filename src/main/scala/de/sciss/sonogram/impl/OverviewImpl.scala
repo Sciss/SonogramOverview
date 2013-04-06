@@ -72,6 +72,8 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
   private def seekWindow(af: AudioFile, decim: DecimationSpec, idx: Long) {
     val framePos = idx * numKernels + decim.offset
     if ( /* (decim.windowsReady > 0L) && */ (af.position != framePos)) {
+      // debug(s"Seek decim file, idx = $idx, offset = ${decim.offset}; numKernels = $numKernels, framePos = $framePos")
+      // debug(s"File $af; numFrames = ${af.numFrames}; numChannels = ${af.numChannels}; isOpen? ${af.isOpen}")
       af.seek(framePos)
     }
   }
@@ -267,12 +269,26 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
         val afd = AudioFileSpec(AudioFileType.NeXT, SampleFormat.Float,
           numChannels = inputSpec.numChannels, sampleRate = inputSpec.sampleRate)
         daf = AudioFile.openWrite(f, afd)
-        debug(s"opened decim file")
-        sync.synchronized { futRes = daf }
+        debug("opened decim file")
+        var success = false
         try {
+          sync.synchronized { futRes = daf }
           primaryRender(daf, constQ, af)
+          // val t2      = System.currentTimeMillis
+          var idxIn = 0
+          var idxOut = 1
+          while (idxOut < decimSpecs.length) {
+            //      if (ws.isCancelled) return
+            // if( verbose ) println( "start " + pair.head.totalDecim )
+            secondaryRender(daf, decimSpecs(idxIn), decimSpecs(idxOut))
+            // if( verbose ) println( "finished " + pair.head.totalDecim )
+            idxIn = idxOut
+            idxOut += 1
+          }
+          daf.flush()
+          success = true
         } finally {
-          daf.cleanUp()
+          if (!success) daf.cleanUp()
         }
       }
       finally {
@@ -282,22 +298,8 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
     finally {
       manager.releaseConstQ(config.sonogram)
     }
-    // val t2      = System.currentTimeMillis
-    var idxIn   = 0
-    var idxOut  = 1
-    while (idxOut < decimSpecs.length) {
-//      if (ws.isCancelled) return
-      // if( verbose ) println( "start " + pair.head.totalDecim )
-      secondaryRender(daf, decimSpecs(idxIn), decimSpecs(idxOut))
-      // if( verbose ) println( "finished " + pair.head.totalDecim )
-      idxIn   = idxOut
-      idxOut += 1
-    }
-    daf.flush()
-    // val t3 = System.currentTimeMillis
-    // if (Overview.verbose) println("primary : secondary ratio = " + (t2 - t1).toDouble / (t3 - t2))
 
-    debug(s"body exit")
+    debug("body exit")
     OvrOut(input, f)
   }
 
@@ -310,7 +312,7 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
   }
 
   private def primaryRender(daf: AudioFile, constQ: ConstQ, in: AudioFile) {
-    debug(s"enter primaryRender")
+    debug("enter primaryRender")
     val fftSize     = constQ.fftSize
     val stepSize    = config.sonogram.stepSize
     val inBuf       = Array.ofDim[Float](numChannels, fftSize)
@@ -370,7 +372,7 @@ private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
   // XXX THIS NEEDS BIGGER BUFSIZE BECAUSE NOW WE SEEK IN THE SAME FILE
   // FOR INPUT AND OUTPUT!!!
   private def secondaryRender(daf: AudioFile, in: DecimationSpec, out: DecimationSpec) {
-    debug(s"enter secondaryRender")
+    debug("enter secondaryRender")
     val dec         = out.decimFactor
     val bufSize     = dec * numKernels
     val buf         = Array.ofDim[Float](numChannels, bufSize)
