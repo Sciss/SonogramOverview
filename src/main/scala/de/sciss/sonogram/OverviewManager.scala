@@ -79,13 +79,13 @@ trait OverviewManager extends Model[OverviewManager.Update] {
 
   def caching: Option[Caching]
 
-//  /**
-//   * Creates a new sonogram overview from a given audio file
-//   *
-//   * @param file    the audio file to analyze
-//   * @param config  the settings for the analysis resolution. Note that `sampleRate` will be ignored as it is replaced
-//   *                by the file's sample rate. Also note that `maxFreq` will be clipped to nyquist.
-//   * @return
-//   */
-//  def fromFile(file: File, config: ConstQ.Config = ConstQ.Config()): Overview
+  //  /**
+  //   * Creates a new sonogram overview from a given audio file
+  //   *
+  //   * @param file    the audio file to analyze
+  //   * @param config  the settings for the analysis resolution. Note that `sampleRate` will be ignored as it is replaced
+  //   *                by the file's sample rate. Also note that `maxFreq` will be clipped to nyquist.
+  //   * @return
+  //   */
+  //  def fromFile(file: File, config: ConstQ.Config = ConstQ.Config()): Overview
 }

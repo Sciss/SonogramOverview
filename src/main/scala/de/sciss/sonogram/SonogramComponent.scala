@@ -47,7 +47,7 @@ class SonogramComponent
     g2.setColor(Color.white)
     g2.drawString("Calculating...", 8, 20)
     sonoO.foreach { sono =>
-      sono.paint(0L, sono.config.fileSpec.numFrames, g2, x, y, w, h, this)
+      sono.paint(0L, sono.inputSpec.numFrames, g2, x, y, w, h, this)
     }
   }
 

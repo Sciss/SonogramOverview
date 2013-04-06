@@ -39,11 +39,12 @@ import de.sciss.filecache.{Consumer, Limit, Producer}
 import scala.concurrent.Future
 
 class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
-  extends OverviewManager with ModelImpl[OverviewManager.Update] {
+  extends OverviewManager with ModelImpl[OverviewManager.Update] with ResourceManager {
 
   mgr =>
 
   import OverviewManager._
+  import Overview.{Config => OvrSpec, Input => OvrIn, Output => OvrOut}
 
   //  /** Creates the file for the overview cache meta data. It should have a filename extension,
   //    * and the manager will store the overview binary data in a file with the same prefix but
@@ -59,15 +60,19 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
   private var constQCache   = Map.empty[SonogramSpec, ConstQCache]
   private var imageCache    = Map.empty[(Int, Int), ImageCache]
   private var fileBufCache  = Map.empty[ImageSpec, FileBufCache]
-  private var overviews     = Map.empty[Job, Overview]
+
+  private var futures       = Map.empty[OvrSpec, Future[OvrOut]]
+  private var overviews     = Map.empty[OvrSpec, Overview]
   private val sync          = new AnyRef
 
-  private val producer      = {
-    val cc = Producer.Config[Job, File]()
+  private val producer = {
+    val cc = Producer.Config[OvrSpec, OvrOut]()
     cc.extension  = "sono"
-    cc.accept     = (decimF: File) => true
-    cc.space      = (decimF: File) => decimF.length()
-    cc.evict      = (decimF: File) => decimF.delete()
+    cc.accept     = { (spec: OvrSpec, out: OvrOut) =>
+      spec.file.lastModified() == out.input.lastModified && AudioFile.readSpec(spec.file) == out.input.fileSpec
+    }
+    cc.space      = { (spec: OvrSpec, out: OvrOut) => out.output.length() }
+    cc.evict      = { (spec: OvrSpec, out: OvrOut) => out.output.delete() }
 
     caching match {
       case Some(c) =>
@@ -85,10 +90,10 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
     Producer(cc)
   }
 
-  private val consumer = Consumer(producer) { job =>
-
-    ??? : Future[File]
-  }
+  //  private val consumer = Consumer(producer) { ovrSpec =>
+  //    overviews
+  //    ... : Future[OvrOut]
+  //  }
 
   /**
    * Creates a new sonogram overview from a given audio file
@@ -97,25 +102,26 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
    *                by the file's sample rate. Also note that `maxFreq` will be clipped to nyquist.
    * @return
    */
-  final def submit(job: Job): Overview = sync.synchronized {
-    overviews.getOrElse(job, {
-      val res = newJob(job)
-      overviews += job -> res
-      res
-    })
+  final def submit(job: Job): Overview = {
+    val (ovrSpec, ovrIn) = jobToOverviewConfig(job)
+    sync.synchronized {
+      overviews.get(ovrSpec) match {
+        case Some(ovr) =>
+          // TODO: add use count
+          ovr
+
+        case _ =>
+          val res    = new OverviewImpl(ovrSpec, ovrIn, manager = this, /* folder = folder, */ producer = producer)
+          overviews += ovrSpec -> res
+          import producer.executionContext
+          // res.start()
+          res
+      }
+    }
   }
 
-  private def newJob(job: Job): Overview = {
-    val spec = AudioFile.readSpec(job.file)
-
-    ???
-  }
-
-  private def gagaismo(job: Job): Overview = {
-    val inF         = job.file
-    val in          = AudioFile.openRead(inF)
-    val inSpec      = in.spec
-    in.close()    // render loop will re-open it if necessary...
+  private def jobToOverviewConfig(job: Job): (Overview.Config, Overview.Input) = {
+    val inSpec      = AudioFile.readSpec(job.file)
     val sampleRate  = inSpec.sampleRate
     val cq          = job.analysis
     val stepSize    = (cq.maxTimeRes/1000 * sampleRate + 0.5).toInt
@@ -123,49 +129,67 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
     val sonogram    = SonogramSpec(
       sampleRate = sampleRate, minFreq = cq.minFreq,
       maxFreq = math.min(cq.maxFreq, sampleRate / 2).toFloat, bandsPerOct = cq.bandsPerOct,
-      maxFFTSize = cq.maxFFTSize, stepSize = stepSize)
+      maxFFTSize = cq.maxFFTSize, stepSize = stepSize
+    )
 
-    val overCfg     = Overview.Config(file = inF, fileSpec = inSpec, sonogram = sonogram,
-      lastModified  = inF.lastModified, decimation = decimation)
-
-    val existing    = caching.flatMap { c =>
-      val cacheMetaF    = ??? : java.io.File // createCacheFile(inF)
-      val cacheFolder   = cacheMetaF.getParentFile
-      val cachePrefix   = cacheMetaF.getName
-      val cacheAudioF   = new File(cacheFolder, cachePrefix + ".aif" )
-
-      var overviewO     = Option.empty[Overview]
-      if (cacheMetaF.isFile && cacheAudioF.isFile) {
-        try {
-          val metaIn = new FileInputStream(cacheMetaF)
-          try {
-            val arr = new Array[Byte](metaIn.available())
-            metaIn.read(arr)
-            val cacheConfig = Overview.Config.Serializer.read(DataInput(arr))
-            if (cacheConfig == overCfg) {
-              val cacheAudio = AudioFile.openRead(cacheAudioF)
-              //            // this is wrong: overCfg.fileSpec is audio input spec not decim spec
-              //            if (cacheAudio.spec == overCfg.fileSpec) {
-              val overview = Overview.openRead(overCfg, cacheAudio, this)
-                overviewO = Some(overview)
-              //            }
-            }
-          } finally {
-            metaIn.close()
-          }
-        } catch {
-          case NonFatal(_) =>
-        }
-      }
-      overviewO
-    }
-
-    existing.getOrElse {
-      //      val d           = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, inSpec.numChannels, sampleRate)
-      //      val cacheAudio  = AudioFile.openWrite(cacheAudioF, d) // ...eventually should use shared buffer!!
-      Overview.openWrite(overCfg, /* cacheAudio, */ this)
-    }
+    (Overview.Config(job.file, sonogram, decimation), Overview.Input(inSpec, job.file.lastModified()))
   }
+
+//  private def gagaismo(job: Job): Overview = {
+//    val inF         = job.file
+//    val in          = AudioFile.openRead(inF)
+//    val inSpec      = in.spec
+//    in.close()    // render loop will re-open it if necessary...
+//    val sampleRate  = inSpec.sampleRate
+//    val cq          = job.analysis
+//    val stepSize    = (cq.maxTimeRes/1000 * sampleRate + 0.5).toInt
+//
+//    val sonogram    = SonogramSpec(
+//      sampleRate = sampleRate, minFreq = cq.minFreq,
+//      maxFreq = math.min(cq.maxFreq, sampleRate / 2).toFloat, bandsPerOct = cq.bandsPerOct,
+//      maxFFTSize = cq.maxFFTSize, stepSize = stepSize)
+//
+//    val overCfg     = Overview.Config(file = inF, fileSpec = inSpec, sonogram = sonogram,
+//      lastModified  = inF.lastModified, decimation = decimation)
+//
+//    val existing    = caching.flatMap { c =>
+//      val cacheMetaF    = ... : java.io.File // createCacheFile(inF)
+//      val cacheFolder   = cacheMetaF.getParentFile
+//      val cachePrefix   = cacheMetaF.getName
+//      val cacheAudioF   = new File(cacheFolder, cachePrefix + ".aif" )
+//
+//      var overviewO     = Option.empty[Overview]
+//      if (cacheMetaF.isFile && cacheAudioF.isFile) {
+//        try {
+//          val metaIn = new FileInputStream(cacheMetaF)
+//          try {
+//            val arr = new Array[Byte](metaIn.available())
+//            metaIn.read(arr)
+//            val cacheConfig = Overview.Config.Serializer.read(DataInput(arr))
+//            if (cacheConfig == overCfg) {
+//              val cacheAudio = AudioFile.openRead(cacheAudioF)
+//              //            // this is wrong: overCfg.fileSpec is audio input spec not decim spec
+//              //            if (cacheAudio.spec == overCfg.fileSpec) {
+//              val overview = Overview.openRead(overCfg, cacheAudio, this)
+//                overviewO = Some(overview)
+//              //            }
+//            }
+//          } finally {
+//            metaIn.close()
+//          }
+//        } catch {
+//          case NonFatal(_) =>
+//        }
+//      }
+//      overviewO
+//    }
+//
+//    existing.getOrElse {
+//      //      val d           = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, inSpec.numChannels, sampleRate)
+//      //      val cacheAudio  = AudioFile.openWrite(cacheAudioF, d) // ...eventually should use shared buffer!!
+//      Overview.openWrite(overCfg, /* cacheAudio, */ this)
+//    }
+//  }
 
   def dispose() {
     sync.synchronized {

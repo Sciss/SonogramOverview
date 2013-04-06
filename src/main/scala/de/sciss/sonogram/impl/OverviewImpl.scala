@@ -29,45 +29,69 @@ package impl
 import java.awt.Graphics2D
 import java.awt.image.DataBufferInt
 import de.sciss.dsp.{ConstQ, FastLog}
-import de.sciss.synth.io.AudioFile
+import de.sciss.synth.io.{SampleFormat, AudioFileSpec, AudioFileType, AudioFile}
 import de.sciss.intensitypalette.IntensityPalette
 import java.{util => ju}
 import de.sciss.processor.impl.ProcessorImpl
 import collection.breakOut
 import de.sciss.sonogram.ResourceManager.ImageSpec
+import java.io.File
+import scala.concurrent.blocking
+import de.sciss.filecache.Producer
+import Overview.{Output => OvrOut, Input => OvrIn, Config => OvrSpec}
 
 private[sonogram] object OverviewImpl {
   private lazy val log10 = FastLog(base = 10, q = 11)
 }
 
-private[sonogram] class OverviewImpl(val config: Overview.Config, manager: ResourceManager,
-                                     decimAF: AudioFile)
-  extends Overview with ProcessorImpl[Unit, Overview] {
+private[sonogram] class OverviewImpl(val config: OvrSpec, input: OvrIn,
+                                     manager: ResourceManager, // folder: File,
+                                     producer: Producer[OvrSpec, OvrOut])
+  extends Overview with ProcessorImpl[OvrOut, Overview] {
 
   import OverviewImpl._
 
+  val inputSpec           = input.fileSpec
+  private val futOut      = producer.acquireWith(config, this)
+
+  // synchronized via sync
+  private var futRes: AudioFile = _
+
+  start()(producer.executionContext)
+
+  futOut.onSuccess {
+    case OvrOut(_, f) =>
+      sync.synchronized {
+        if (!disposed && futRes == null) {
+          futRes = AudioFile.openRead(f)
+        }
+      }
+  }
+
   private val sync        = new AnyRef
-  private val numChannels = config.fileSpec.numChannels
+  private val numChannels = inputSpec.numChannels
   private val numKernels  = config.sonogram.numKernels
   private val imgSpec     = ImageSpec(numChannels, width = 128, height = numKernels)
   private val sonoImg     = manager.allocateImage(imgSpec)
   private val imgData     = sonoImg.img.getRaster.getDataBuffer.asInstanceOf[DataBufferInt].getData
 
+  // private def decimAF: AudioFile = ...
+
   // caller must have sync
-  private def seekWindow(decim: DecimationSpec, idx: Long) {
+  private def seekWindow(af: AudioFile, decim: DecimationSpec, idx: Long) {
     val framePos = idx * numKernels + decim.offset
-    if ( /* (decim.windowsReady > 0L) && */ (decimAF.position != framePos)) {
-      decimAF.seek(framePos)
+    if ( /* (decim.windowsReady > 0L) && */ (af.position != framePos)) {
+      af.seek(framePos)
     }
   }
 
   private val decimSpecs: Array[DecimationSpec] = {
     var totalDecim  = config.sonogram.stepSize
-    var numWindows  = (config.fileSpec.numFrames + totalDecim - 1) / totalDecim
+    var numWindows  = (inputSpec.numFrames + totalDecim - 1) / totalDecim
     var offset      = 0L
 
     config.decimation.map(decimFactor => {
-      if (offset != 0L) require(decimFactor % 2 != 0, "Only even decimation factors supported")
+      if (offset != 0L) require(decimFactor % 2 == 0, s"Only even decimation factors supported: $decimFactor")
       totalDecim   *= decimFactor
       numWindows    = (numWindows + decimFactor - 1) / decimFactor
       val decimSpec = new DecimationSpec(offset, numWindows, decimFactor, totalDecim)
@@ -86,6 +110,10 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
   def paint(spanStart: Double, spanStop: Double, g2: Graphics2D, tx: Int,
             ty: Int, width: Int, height: Int,
             ctrl: PaintController) {
+
+    val daf  = futRes
+    if (daf == null) return
+
     val idealDecim  = ((spanStop - spanStart) / width).toFloat
     val in          = getBestDecim(idealDecim)
     // val scaleW        = idealDecim / in.totalDecim
@@ -128,12 +156,12 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
       var firstPass = true
       sync.synchronized {
         if (in.windowsReady <= start) return // or draw busy-area
-        seekWindow(in, start)
+        seekWindow(daf, in, start)
         val numWindows = math.min(in.windowsReady, stop) - start
         while (windowsRead < numWindows) {
           val chunkLen2 = math.min(imgW - xReset, numWindows - windowsRead).toInt
           val chunkLen  = chunkLen2 + xReset
-          decimAF.read(sonoImg.fileBuf, 0, chunkLen2 * numKernels)
+          daf.read(sonoImg.fileBuf, 0, chunkLen2 * numKernels)
           windowsRead += chunkLen2
           if (firstPass) {
             firstPass = false
@@ -204,14 +232,24 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
     }
   }
 
-  protected def body() {
+  protected def body(): OvrOut = blocking {
     val constQ = manager.allocateConstQ(config.sonogram)
     // val fftSize = constQ.getFFTSize
     val t1 = System.currentTimeMillis
+    var daf: AudioFile = null
+    val f = File.createTempFile("sono", ".au", producer.config.folder)
     try {
       val af = AudioFile.openRead(config.file)
       try {
-        primaryRender(constQ, af)
+        val afd = AudioFileSpec(AudioFileType.NeXT, SampleFormat.Float,
+          numChannels = inputSpec.numChannels, sampleRate = inputSpec.sampleRate)
+        daf     = AudioFile.openWrite(f, afd)
+        sync.synchronized { futRes = daf }
+        try {
+          primaryRender(daf, constQ, af)
+        } finally {
+          daf.cleanUp()
+        }
       }
       finally {
         af.cleanUp()
@@ -226,17 +264,19 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
     while (idxOut < decimSpecs.length) {
 //      if (ws.isCancelled) return
       // if( verbose ) println( "start " + pair.head.totalDecim )
-      secondaryRender(decimSpecs(idxIn), decimSpecs(idxOut))
+      secondaryRender(daf, decimSpecs(idxIn), decimSpecs(idxOut))
       // if( verbose ) println( "finished " + pair.head.totalDecim )
       idxIn   = idxOut
       idxOut += 1
     }
-    decimAF.flush()
+    daf.flush()
     val t3 = System.currentTimeMillis
     if (Overview.verbose) println("primary : secondary ratio = " + (t2 - t1).toDouble / (t3 - t2))
+
+    OvrOut(input, f)
   }
 
-  private def primaryRender(constQ: ConstQ, in: AudioFile) {
+  private def primaryRender(daf: AudioFile, constQ: ConstQ, in: AudioFile) {
     val fftSize     = constQ.fftSize
     val stepSize    = config.sonogram.stepSize
     val inBuf       = Array.ofDim[Float](numChannels, fftSize)
@@ -245,7 +285,7 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
     var inOff       = fftSize / 2
     var inLen       = fftSize - inOff
     val overLen     = fftSize - stepSize
-    val numFrames   = config.fileSpec.numFrames
+    val numFrames   = inputSpec.numFrames
     var framesRead  = 0L
     val out         = decimSpecs(0)
     var ch          = 0
@@ -272,8 +312,8 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
       }
 
       sync.synchronized {
-        seekWindow(out, out.windowsReady)
-        decimAF.write(outBuf, 0, numKernels)
+        seekWindow(daf, out, out.windowsReady)
+        daf.write(outBuf, 0, numKernels)
         out.windowsReady += 1
       }
 
@@ -295,7 +335,7 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
 
   // XXX THIS NEEDS BIGGER BUFSIZE BECAUSE NOW WE SEEK IN THE SAME FILE
   // FOR INPUT AND OUTPUT!!!
-  private def secondaryRender(in: DecimationSpec, out: DecimationSpec) {
+  private def secondaryRender(daf: AudioFile, in: DecimationSpec, out: DecimationSpec) {
     val dec         = out.decimFactor
     val bufSize     = dec * numKernels
     val buf         = Array.ofDim[Float](numChannels, bufSize)
@@ -312,8 +352,8 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
 
       val chunkLen = math.min(inLen, (in.numWindows - windowsRead) * numKernels).toInt
       sync.synchronized {
-        seekWindow(in, windowsRead)
-        decimAF.read(buf, inOff, chunkLen)
+        seekWindow(daf, in, windowsRead)
+        daf.read(buf, inOff, chunkLen)
       }
       windowsRead += chunkLen / numKernels
       if (chunkLen < inLen) {
@@ -341,8 +381,8 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
       }
 
       sync.synchronized {
-        seekWindow(out, out.windowsReady)
-        decimAF.write(buf, 0, numKernels)
+        seekWindow(daf, out, out.windowsReady)
+        daf.write(buf, 0, numKernels)
         out.windowsReady += 1
       }
 
@@ -363,7 +403,13 @@ private[sonogram] class OverviewImpl(val config: Overview.Config, manager: Resou
         disposed = true
         releaseListeners()
         manager.releaseImage(imgSpec)
-        decimAF.cleanUp() // XXX delete?
+        // decimAF.cleanUp()
+        futOut.onSuccess {
+          case _ => sync.synchronized {
+            futRes.cleanUp()   // XXX delete?
+            futRes = null
+          }
+        }
       }
     )
   }
