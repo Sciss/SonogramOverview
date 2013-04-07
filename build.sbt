@@ -1,6 +1,6 @@
 name := "SonogramOverview"
 
-version := "1.4.0-SNAPSHOT"
+version := "1.4.0"
 
 organization := "de.sciss"
 
@@ -19,12 +19,15 @@ libraryDependencies ++= Seq(
   "de.sciss" %% "processor"        % "0.1.+",
   "de.sciss" %% "filecache"        % "0.1.+",
   "de.sciss" %% "model"            % "0.2.2+",
-  "de.sciss" %% "span"             % "1.2.+"
+  "de.sciss" %% "span"             % "1.2.+",
+  "de.sciss" %% "desktop"          % "0.2.+" % "test"
 )
 
 retrieveManaged := true
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature")
+
+scalacOptions ++= Seq("-Xelide-below", "INFO")     // elide debug logging!
 
 // ---- build info ----
 

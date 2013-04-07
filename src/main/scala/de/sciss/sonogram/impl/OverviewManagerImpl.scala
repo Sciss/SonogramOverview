@@ -28,23 +28,37 @@ package de.sciss.sonogram
 package impl
 
 import java.awt.image.BufferedImage
-import java.io.{FileInputStream, File}
+import java.io.File
 import de.sciss.dsp.ConstQ
 import de.sciss.synth.io.{AudioFile, Frames}
-import util.control.NonFatal
 import de.sciss.sonogram.ResourceManager.{Image, ImageSpec}
 import de.sciss.model.impl.ModelImpl
-import de.sciss.serial.{ImmutableSerializer, DataInput}
-import de.sciss.filecache.{Consumer, Limit, Producer}
-import scala.concurrent.Future
+import de.sciss.filecache.{Limit, Producer}
 
-class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
+private object OverviewManagerImpl {
+  private final class ConstQCache(val constQ: ConstQ) {
+    var useCount = 0
+  }
+
+  private final class FileBufCache(val buf: Frames) {
+    var useCount = 0
+  }
+
+  private final class ImageCache(val img: BufferedImage) {
+    var useCount = 0
+  }
+
+  private final class OverviewCache(val overview: OverviewImpl) {
+    var useCount = 0
+  }
+}
+private[sonogram] final class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
   extends OverviewManager with ModelImpl[OverviewManager.Update] with ResourceManager {
 
-  mgr =>
-
   import OverviewManager._
-  import Overview.{Config => OvrSpec, Input => OvrIn, Output => OvrOut}
+  import OverviewManagerImpl._
+  import Overview.{Config => OvrSpec, Output => OvrOut}
+  import OverviewImpl.debug
 
   //  /** Creates the file for the overview cache meta data. It should have a filename extension,
   //    * and the manager will store the overview binary data in a file with the same prefix but
@@ -61,22 +75,32 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
   private var imageCache    = Map.empty[(Int, Int), ImageCache]
   private var fileBufCache  = Map.empty[ImageSpec, FileBufCache]
 
-  private var futures       = Map.empty[OvrSpec, Future[OvrOut]]
-  private var overviews     = Map.empty[OvrSpec, Overview]
+  // private var futures       = Map.empty[OvrSpec, Future[OvrOut]]
+  private var overviewCache = Map.empty[OvrSpec, OverviewCache]
   private val sync          = new AnyRef
 
   private val producer = {
     val cc = Producer.Config[OvrSpec, OvrOut]()
     cc.extension  = "sono"
     cc.accept     = { (spec: OvrSpec, out: OvrOut) =>
-      spec.file.lastModified() == out.input.lastModified && AudioFile.readSpec(spec.file) == out.input.fileSpec
+      val specAF = AudioFile.readSpec(spec.file)
+      debug(s"accept ${spec.file.lastModified()} == ${out.input.lastModified} && $specAF == ${out.input.fileSpec}")
+      spec.file.lastModified() == out.input.lastModified && specAF == out.input.fileSpec
     }
-    cc.space      = { (spec: OvrSpec, out: OvrOut) => out.output.length() }
-    cc.evict      = { (spec: OvrSpec, out: OvrOut) => out.output.delete() }
+    cc.space      = { (spec: OvrSpec, out: OvrOut) =>
+      val res = out.output.length()
+      debug(s"space of $out is $res")
+      res
+    }
+    cc.evict      = { (spec: OvrSpec, out: OvrOut) =>
+      debug(s"evict $out")
+      out.output.delete()
+    }
 
     caching match {
       case Some(c) =>
         cc.capacity = Limit(space = c.sizeLimit)
+        debug(s"Producer capacity is ${cc.capacity}")
         cc.folder   = c.folder
 
       case _ =>
@@ -95,33 +119,30 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
   //    ... : Future[OvrOut]
   //  }
 
-  /**
-   * Creates a new sonogram overview from a given audio file
-   *
-   * @param job  the settings for the analysis resolution. Note that `sampleRate` will be ignored as it is replaced
-   *                by the file's sample rate. Also note that `maxFreq` will be clipped to nyquist.
-   * @return
-   */
-  final def submit(job: Job): Overview = {
+  def acquire(job: Job): Overview = {
     val (ovrSpec, ovrIn) = jobToOverviewConfig(job)
     sync.synchronized {
-      overviews.get(ovrSpec) match {
-        case Some(ovr) =>
-          // TODO: add use count
-          ovr
+      val entry = overviewCache.getOrElse(ovrSpec, {
+        val res = new OverviewCache(new OverviewImpl(ovrSpec, ovrIn, manager = this, producer = producer))
+        overviewCache += ovrSpec -> res
+        res
+      })
+      entry.useCount += 1
+      entry.overview
+    }
+  }
 
-        case _ =>
-          val res    = new OverviewImpl(ovrSpec, ovrIn, manager = this, /* folder = folder, */ producer = producer)
-          overviews += ovrSpec -> res
-          import producer.executionContext
-          res.addListener {
-            case x => println(s"Observed $x - ${x.getClass}")
-          }
-          res.onFailure {
-            case x => x.printStackTrace()
-          }
-          // res.start()
-          res
+  def release(overview: Overview) {
+    val ovrSpec = overview.config
+    sync.synchronized {
+      val entry = overviewCache.getOrElse(ovrSpec,
+        throw new IllegalStateException(s"Trying to release an unregistered overview")
+      )
+      entry.useCount -= 1
+      debug(s"release $overview; count = ${entry.useCount}")
+      if (entry.useCount == 0) {
+        overviewCache -= ovrSpec
+        entry.overview.dispose()
       }
     }
   }
@@ -141,80 +162,26 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
     (Overview.Config(job.file, sonogram, decimation), Overview.Input(inSpec, job.file.lastModified()))
   }
 
-//  private def gagaismo(job: Job): Overview = {
-//    val inF         = job.file
-//    val in          = AudioFile.openRead(inF)
-//    val inSpec      = in.spec
-//    in.close()    // render loop will re-open it if necessary...
-//    val sampleRate  = inSpec.sampleRate
-//    val cq          = job.analysis
-//    val stepSize    = (cq.maxTimeRes/1000 * sampleRate + 0.5).toInt
-//
-//    val sonogram    = SonogramSpec(
-//      sampleRate = sampleRate, minFreq = cq.minFreq,
-//      maxFreq = math.min(cq.maxFreq, sampleRate / 2).toFloat, bandsPerOct = cq.bandsPerOct,
-//      maxFFTSize = cq.maxFFTSize, stepSize = stepSize)
-//
-//    val overCfg     = Overview.Config(file = inF, fileSpec = inSpec, sonogram = sonogram,
-//      lastModified  = inF.lastModified, decimation = decimation)
-//
-//    val existing    = caching.flatMap { c =>
-//      val cacheMetaF    = ... : java.io.File // createCacheFile(inF)
-//      val cacheFolder   = cacheMetaF.getParentFile
-//      val cachePrefix   = cacheMetaF.getName
-//      val cacheAudioF   = new File(cacheFolder, cachePrefix + ".aif" )
-//
-//      var overviewO     = Option.empty[Overview]
-//      if (cacheMetaF.isFile && cacheAudioF.isFile) {
-//        try {
-//          val metaIn = new FileInputStream(cacheMetaF)
-//          try {
-//            val arr = new Array[Byte](metaIn.available())
-//            metaIn.read(arr)
-//            val cacheConfig = Overview.Config.Serializer.read(DataInput(arr))
-//            if (cacheConfig == overCfg) {
-//              val cacheAudio = AudioFile.openRead(cacheAudioF)
-//              //            // this is wrong: overCfg.fileSpec is audio input spec not decim spec
-//              //            if (cacheAudio.spec == overCfg.fileSpec) {
-//              val overview = Overview.openRead(overCfg, cacheAudio, this)
-//                overviewO = Some(overview)
-//              //            }
-//            }
-//          } finally {
-//            metaIn.close()
-//          }
-//        } catch {
-//          case NonFatal(_) =>
-//        }
-//      }
-//      overviewO
-//    }
-//
-//    existing.getOrElse {
-//      //      val d           = AudioFileSpec(AudioFileType.AIFF, SampleFormat.Float, inSpec.numChannels, sampleRate)
-//      //      val cacheAudio  = AudioFile.openWrite(cacheAudioF, d) // ...eventually should use shared buffer!!
-//      Overview.openWrite(overCfg, /* cacheAudio, */ this)
-//    }
-//  }
-
   def dispose() {
     sync.synchronized {
       releaseListeners()
-      overviews.foreach(_._2.abort())
+      overviewCache.foreach(_._2.overview.abort())
     }
   }
 
-  final def allocateConstQ(spec: SonogramSpec): ConstQ = {
+  def allocateConstQ(spec: SonogramSpec): ConstQ = {
     sync.synchronized {
-      val entry = constQCache.get(spec) getOrElse
-        new ConstQCache(constQFromSpec(spec))
+      val entry = constQCache.get(spec) getOrElse {
+        val res = new ConstQCache(constQFromSpec(spec))
+        constQCache += spec -> res
+        res
+      }
       entry.useCount += 1
-      constQCache    += (spec -> entry) // in case it was newly created
       entry.constQ
     }
   }
 
-  final def releaseConstQ(spec: SonogramSpec) {
+  def releaseConstQ(spec: SonogramSpec) {
     sync.synchronized {
       val entry = constQCache(spec) // let it throw an exception if not contained
       entry.useCount -= 1
@@ -224,7 +191,7 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
     }
   }
 
-  final def allocateImage(spec: ImageSpec): Image = {
+  def allocateImage(spec: ImageSpec): Image = {
     sync.synchronized {
       val img     = allocateImage(spec.width, spec.height)
       val fileBuf = allocateFileBuf(spec)
@@ -232,7 +199,7 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
     }
   }
 
-  final def releaseImage(spec: ImageSpec) {
+  def releaseImage(spec: ImageSpec) {
     sync.synchronized {
       releaseImage(spec.width, spec.height)
       releaseFileBuf(spec)
@@ -241,20 +208,24 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
 
   private def allocateImage(width: Int, height: Int): BufferedImage = {
     sync.synchronized {
-      val entry = imageCache.get((width, height)) getOrElse
-        new ImageCache(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB))
+      val entry = imageCache.getOrElse((width, height), {
+        val res = new ImageCache(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB))
+        imageCache += (width, height) -> res
+        res
+      })
       entry.useCount += 1
-      imageCache += ((width, height) -> entry) // in case it was newly created
       entry.img
     }
   }
 
   private def allocateFileBuf(spec: ImageSpec): Array[Array[Float]] = {
     sync.synchronized {
-      val entry = fileBufCache.get(spec) getOrElse
-        new FileBufCache(Array.ofDim[Float](spec.numChannels, spec.width * spec.height))
+      val entry = fileBufCache.getOrElse(spec, {
+        val res = new FileBufCache(Array.ofDim[Float](spec.numChannels, spec.width * spec.height))
+        fileBufCache += spec -> res
+        res
+      })
       entry.useCount += 1
-      fileBufCache += (spec -> entry) // in case it was newly created
       entry.buf
     }
   }
@@ -291,17 +262,5 @@ class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
     cfg.maxTimeRes  = maxTimeRes.toFloat  // note: this is a purely informative field
     cfg.maxFFTSize  = spec.maxFFTSize
     ConstQ(cfg)
-  }
-
-  private final class ConstQCache(val constQ: ConstQ) {
-    var useCount: Int = 0
-  }
-
-  private final class FileBufCache(val buf: Frames) {
-    var useCount: Int = 0
-  }
-
-  private final class ImageCache(val img: BufferedImage) {
-    var useCount: Int = 0
   }
 }

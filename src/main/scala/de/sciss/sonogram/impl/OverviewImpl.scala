@@ -40,8 +40,10 @@ import scala.concurrent.blocking
 import de.sciss.filecache.Producer
 import Overview.{Output => OvrOut, Input => OvrIn, Config => OvrSpec}
 import scala.annotation.elidable
+import de.sciss.processor.Processor
+import scala.util.Success
 
-private[sonogram] object OverviewImpl {
+private object OverviewImpl {
   private lazy val log10 = FastLog(base = 10, q = 11)
   @elidable(elidable.CONFIG) def debug(what: => String) { println(s"<overview> $what") }
 }
@@ -96,17 +98,22 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
 
   // ---- submission and start ----
 
-  private val futOut      = producer.acquireWith(config, this)
+  private val futOut = producer.acquireWith(config, {
+    start()(producer.executionContext)
+    this
+  })
   futOut.onSuccess({
-    case OvrOut(_, f) =>
+    case out @ OvrOut(_, f) =>
+      debug(s"future succeeded with $out")
       sync.synchronized {
         if (!disposed && futRes == null) {
           futRes = AudioFile.openRead(f)
+          debug("opened existing decimation")
+          var i = 0; while (i < decimSpecs.length ) { decimSpecs(i).markReady(); i += 1 }
+          dispatch(Processor.Result(this, Success(out)))
         }
       }
   })(producer.executionContext) // crucial not to demand context from Processor trait because that is not known yet
-
-  start()(producer.executionContext)
 
   // ---- public ----
 
@@ -168,9 +175,9 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
       var xOff      = 0
       var yOff      = 0
       var iOff      = 0
-// OOO
-//      var xReset    = 0
-//      var firstPass = true
+      // OOO
+      //      var xReset    = 0
+      //      var firstPass = true
 
       val uiw = imgW - (imgW % hDecim)  // used image width: largest width being a multiple of the h decimation
 
@@ -193,22 +200,23 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
           windowsRead += chunkLen2
 
           // debug(s"chunkLen $chunkLen; w $w")
-// OOO
-//          if (firstPass) {
-//            firstPass = false
-//          } else {      // if not in the first pass, we have a horizontal image overlap going on
-//            xReset  = 4 // the overlap in pixels
-//            iOff    = 0
-//            v       = 0
-//            while (v < uih) {
-//              iBuf(iOff)     = iBuf(iOff + imgW - 4)
-//              iBuf(iOff + 1) = iBuf(iOff + imgW - 3)
-//              iBuf(iOff + 2) = iBuf(iOff + imgW - 2)
-//              iBuf(iOff + 3) = iBuf(iOff + imgW - 1)
-//              v    += 1
-//              iOff += imgW
-//            }
-//          }
+
+          // OOO
+          //          if (firstPass) {
+          //            firstPass = false
+          //          } else {      // if not in the first pass, we have a horizontal image overlap going on
+          //            xReset  = 4 // the overlap in pixels
+          //            iOff    = 0
+          //            v       = 0
+          //            while (v < uih) {
+          //              iBuf(iOff)     = iBuf(iOff + imgW - 4)
+          //              iBuf(iOff + 1) = iBuf(iOff + imgW - 3)
+          //              iBuf(iOff + 2) = iBuf(iOff + imgW - 2)
+          //              iBuf(iOff + 3) = iBuf(iOff + imgW - 1)
+          //              v    += 1
+          //              iOff += imgW
+          //            }
+          //          }
           yOff   = 0
           var ch = 0
           while (ch < numChannels) {
@@ -267,12 +275,13 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
         releaseListeners()
         manager.releaseImage(imgSpec)
         // decimAF.cleanUp()
-        futOut.onSuccess {
+        futOut.onSuccess({
           case _ => sync.synchronized {
             futRes.cleanUp()   // XXX delete?
             futRes = null
+            producer.release(config)
           }
-        }
+        })(producer.executionContext)
       }
     )
   }

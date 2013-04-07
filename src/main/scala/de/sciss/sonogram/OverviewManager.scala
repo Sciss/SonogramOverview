@@ -74,7 +74,9 @@ object OverviewManager {
 trait OverviewManager extends Model[OverviewManager.Update] {
   import OverviewManager._
 
-  def submit(job: Job): Overview
+  def acquire(job: Job): Overview
+  def release(overview: Overview): Unit
+
   def dispose(): Unit
 
   def caching: Option[Caching]

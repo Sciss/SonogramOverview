@@ -27,7 +27,7 @@ package de.sciss.sonogram
 
 import java.awt.Graphics2D
 import de.sciss.model.Model
-import de.sciss.synth.io.{AudioFileSpec, AudioFile}
+import de.sciss.synth.io.AudioFileSpec
 import de.sciss.processor.Processor
 import java.io.File
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
@@ -131,7 +131,7 @@ trait Overview extends Processor[Any, Overview] {
   def config: Overview.Config
   def inputSpec: AudioFileSpec
 
-  def dispose(): Unit
+  // def dispose(): Unit
 
   def paint(spanStart: Double, spanStop: Double, g2: Graphics2D, tx: Int, ty: Int, width: Int, height: Int,
             ctrl: PaintController): Unit

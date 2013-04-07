@@ -29,6 +29,7 @@ import javax.swing.JComponent
 import java.awt.{RenderingHints, Color, Graphics, Graphics2D}
 import java.awt.image.ImageObserver
 import de.sciss.processor.Processor
+import scala.util.Success
 
 class SonogramComponent
   extends JComponent with PaintController {
@@ -78,6 +79,7 @@ class SonogramComponent
   // ---- SonogramOverviewListener ----
 
   private val listener: Overview.Observer = {
-    case Processor.Progress(_, _) => repaint()
+//    case Processor.Progress(_, _)         => repaint()
+    case Processor.Result(_, Success(_))  => repaint()
   }
 }

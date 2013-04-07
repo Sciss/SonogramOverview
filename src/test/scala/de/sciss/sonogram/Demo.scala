@@ -25,64 +25,113 @@
 
 package de.sciss.sonogram
 
-import java.awt.{BorderLayout, EventQueue, FileDialog}
+import java.awt.FileDialog
 import java.io.File
-import javax.swing.{JFrame, JSlider, SwingConstants, WindowConstants}
-import javax.swing.event.{ChangeEvent, ChangeListener}
 import de.sciss.dsp.Util
 import util.control.NonFatal
-import de.sciss.processor.Processor
-import scala.util.{Failure, Success}
+import java.awt.event.KeyEvent
+import de.sciss.desktop.impl.{WindowImpl, SwingApplicationImpl}
+import de.sciss.desktop.{Window, KeyStrokes, Menu}
+import scala.swing.{Swing, Component, Orientation, Slider, BorderPanel}
+import scala.swing.event.ValueChanged
+import Swing._
 
-object Demo extends App with Runnable {
+object Demo extends SwingApplicationImpl("Demo") {
   import Util.dbamp
 
-  EventQueue.invokeLater(this)
+  def useCache = false
 
-  def run() {
-    val f     = new JFrame()
-    val cp    = f.getContentPane
+  lazy val menuFactory: Menu.Root = {
+    import KeyStrokes._
+    import KeyEvent._
+    Menu.Root()
+      .add(Menu.Group("file", "File")
+      .add(Menu.Item("open")("Open" -> (menu1 + VK_O)) {
+        openDialog()
+      })
+    )
+  }
 
-    val fDlg  = new FileDialog(f, "Select an audio file")
+  val mgr = {
+    val cfg     = if (useCache) {
+      val folder  = new File(sys.props("java.io.tmpdir"), "sono_demo")
+      if (!folder.exists()) folder.mkdir()
+      Some(OverviewManager.Caching(folder, (1L << 20) * 256))
+    } else {
+      None
+    }
+    OverviewManager(cfg)
+  }
+
+  def openDialog() {
+    val fDlg  = new FileDialog(null: java.awt.Frame, "Select an audio file")
     fDlg.setVisible(true)
     val fName = fDlg.getFile
     val fDir  = fDlg.getDirectory
-    if (fName == null || fDir == null) sys.exit(1)
+    if (fName != null && fDir != null) {
+      open(new File(fDir, fName))
+    }
+  }
 
-    f.setTitle("SonogramOverview Demo : " + fName)
-
+  def open(f: File) {
     try {
-      val path    = new File(fDir, fName)
-//      val folder  = new File(sys.props("java.io.tmpdir"), "sono_demo")
-//      if (!folder.exists()) folder.mkdir()
-//      val cfg     = OverviewManager.Caching(folder, (1L << 20) * 256)
-      val mgr     = OverviewManager() // (Some(cfg))
-      val ov      = mgr.submit(OverviewManager.Job(path))
+      val ov      = mgr.acquire(OverviewManager.Job(f))
       //      ov.addListener {
       //        case Processor.Result(_, Failure(e)) => e.printStackTrace()
       //      }
       val view    = new SonogramComponent
       view.boost  = 4f
       view.sono   = Some(ov)
-      val ggBoost = new JSlider(SwingConstants.VERTICAL, 0, 360, 120)
-      ggBoost.addChangeListener(new ChangeListener {
-        def stateChanged(e: ChangeEvent) {
-          view.boost = dbamp(ggBoost.getValue * 0.1).toFloat
+      val ggBoost = new Slider {
+        orientation = Orientation.Vertical
+        min         = 0
+        max         = 360
+        value       = 120
+
+        listenTo(this)
+        reactions += {
+          case ValueChanged(_) => view.boost = dbamp(value * 0.1).toFloat
         }
-      })
-      ggBoost.putClientProperty("JComponent.sizeVariant", "small")
-      cp.add(view, BorderLayout.CENTER)
-      cp.add(ggBoost, BorderLayout.EAST)
-      f.setSize(800, 300)
-      f.setLocationRelativeTo(null)
-      f.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE)
-      f.setVisible(true)
+        peer.putClientProperty("JComponent.sizeVariant", "small")
+      }
+
+      new WindowImpl {
+        def handler = windowHandler
+        protected def style = Window.Regular
+
+        title     = f.getName
+        file      = Some(f)
+        contents  = new BorderPanel {
+          add(Component.wrap(view), BorderPanel.Position.Center)
+          add(ggBoost, BorderPanel.Position.East)
+        }
+
+        size = (800, 300)
+        // f.setLocationRelativeTo(null)
+
+        closeOperation = Window.CloseIgnore
+        reactions += {
+          case Window.Closing(_) =>
+            dispose()
+            mgr.release(ov)
+        }
+
+        front()
+      }
     }
     catch {
       case NonFatal(e) => {
         e.printStackTrace()
-        sys.exit(1)
+        // sys.exit(1)
       }
     }
+  }
+
+  override def init() {
+    openDialog()
+  }
+
+  def quit() {
+    sys.exit(0)
   }
 }
