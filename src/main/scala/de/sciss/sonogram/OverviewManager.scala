@@ -32,6 +32,8 @@ import de.sciss.model.Model
 import util.Try
 import impl.{OverviewManagerImpl => Impl}
 import de.sciss.serial.{DataOutput, DataInput, ImmutableSerializer}
+import scala.concurrent.ExecutionContext
+import language.implicitConversions
 
 object OverviewManager {
   object Job {
@@ -62,6 +64,22 @@ object OverviewManager {
   }
   final case class Result(overview: Overview, value: Try[Unit]) extends Update
 
+  sealed trait ConfigLike {
+    def caching: Option[Caching]
+    def executionContext: ExecutionContext
+  }
+  object Config {
+    def apply() = new ConfigBuilder
+    implicit def build(b: ConfigBuilder): Config = b.build
+  }
+  final case class Config private[OverviewManager] (caching: Option[Caching], executionContext: ExecutionContext)
+    extends ConfigLike
+  final class ConfigBuilder private[OverviewManager] extends ConfigLike {
+    var caching = Option.empty[Caching]
+    var executionContext: ExecutionContext = ExecutionContext.global
+    def build = Config(caching, executionContext)
+  }
+
   /** Cache settings.
     *
     * @param folder     the folder to use for caching
@@ -69,7 +87,7 @@ object OverviewManager {
     */
   final case class Caching(folder: File, sizeLimit: Long = -1L)
 
-  def apply(caching: Option[Caching] = None): OverviewManager = new Impl(caching)
+  def apply(config: Config = Config().build): OverviewManager = new Impl(config)
 }
 trait OverviewManager extends Model[OverviewManager.Update] {
   import OverviewManager._
@@ -79,7 +97,7 @@ trait OverviewManager extends Model[OverviewManager.Update] {
 
   def dispose(): Unit
 
-  def caching: Option[Caching]
+  def config: Config
 
   //  /**
   //   * Creates a new sonogram overview from a given audio file

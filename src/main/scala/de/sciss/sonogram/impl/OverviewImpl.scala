@@ -294,13 +294,13 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
     // val fftSize = constQ.getFFTSize
     // val t1 = System.currentTimeMillis
     var daf: AudioFile = null
-    val f = File.createTempFile("sono", ".au", producer.config.folder)
+    val f = File.createTempFile("sono", ".w64", producer.config.folder)
     debug(s"created decim file $f")
     try {
       val af = AudioFile.openRead(config.file)
       debug(s"opened input file ${config.file}")
       try {
-        val afd = AudioFileSpec(AudioFileType.NeXT, SampleFormat.Float,
+        val afd = AudioFileSpec(AudioFileType.Wave64, SampleFormat.Float,
           numChannels = inputSpec.numChannels, sampleRate = inputSpec.sampleRate)
         daf = AudioFile.openWrite(f, afd)
         debug("opened decim file")
@@ -309,7 +309,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
           sync.synchronized { futRes = daf }
           primaryRender(daf, constQ, af)
           // val t2      = System.currentTimeMillis
-          var idxIn = 0
+          var idxIn  = 0
           var idxOut = 1
           while (idxOut < decimSpecs.length) {
             //      if (ws.isCancelled) return

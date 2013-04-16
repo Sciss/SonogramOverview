@@ -53,12 +53,11 @@ object Demo extends SwingApplicationImpl("Demo") {
   }
 
   val mgr = {
-    val cfg     = if (useCache) {
+    val cfg = OverviewManager.Config()
+    if (useCache) {
       val folder  = new File(sys.props("java.io.tmpdir"), "sono_demo")
       if (!folder.exists()) folder.mkdir()
-      Some(OverviewManager.Caching(folder, (1L << 20) * 256))
-    } else {
-      None
+      cfg.caching = Some(OverviewManager.Caching(folder, (1L << 20) * 256))
     }
     OverviewManager(cfg)
   }

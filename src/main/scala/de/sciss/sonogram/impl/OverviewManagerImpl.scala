@@ -52,7 +52,7 @@ private object OverviewManagerImpl {
     var useCount = 0
   }
 }
-private[sonogram] final class OverviewManagerImpl(val caching: Option[OverviewManager.Caching])
+private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Config)
   extends OverviewManager with ModelImpl[OverviewManager.Update] with ResourceManager {
 
   import OverviewManager._
@@ -96,8 +96,9 @@ private[sonogram] final class OverviewManagerImpl(val caching: Option[OverviewMa
       debug(s"evict $out")
       out.output.delete()
     }
+    cc.executionContext = config.executionContext
 
-    caching match {
+    config.caching match {
       case Some(c) =>
         cc.capacity = Limit(space = c.sizeLimit)
         debug(s"Producer capacity is ${cc.capacity}")
