@@ -129,8 +129,4 @@ object Demo extends SwingApplicationImpl("Demo") {
   override def init() {
     openDialog()
   }
-
-  def quit() {
-    sys.exit(0)
-  }
 }

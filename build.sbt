@@ -1,6 +1,6 @@
 name := "SonogramOverview"
 
-version := "1.5.0"
+version := "1.6.0"
 
 organization := "de.sciss"
 
@@ -16,11 +16,10 @@ libraryDependencies ++= Seq(
   "de.sciss" %% "scalaaudiofile"   % "1.4.+",
   "de.sciss" %% "scissdsp"         % "1.2.+",
   "de.sciss" %  "intensitypalette" % "1.0.0",
-  "de.sciss" %% "processor"        % "0.1.+",
+  "de.sciss" %% "processor"        % "0.2.+",
   "de.sciss" %% "filecache"        % "0.2.+",
-  "de.sciss" %% "model"            % "0.2.2+",
   "de.sciss" %% "span"             % "1.2.+",
-  "de.sciss" %% "desktop"          % "0.2.+" % "test"
+  "de.sciss" %% "desktop"          % "0.3.+" % "test"
 )
 
 retrieveManaged := true
