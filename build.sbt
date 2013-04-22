@@ -1,6 +1,6 @@
 name := "SonogramOverview"
 
-version := "1.6.0"
+version := "1.6.1"
 
 organization := "de.sciss"
 
@@ -45,12 +45,12 @@ buildInfoPackage := "de.sciss.sonogram"
 
 publishMavenStyle := true
 
-publishTo <<= version { (v: String) =>
-   Some(if (v endsWith "-SNAPSHOT")
-      "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-   else
-      "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
-   )
+publishTo <<= version { v =>
+  Some(if (v endsWith "-SNAPSHOT")
+    "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+  else
+    "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+  )
 }
 
 publishArtifact in Test := false

@@ -36,12 +36,13 @@ import de.sciss.processor.impl.ProcessorImpl
 import collection.breakOut
 import de.sciss.sonogram.ResourceManager.ImageSpec
 import java.io.File
-import scala.concurrent.blocking
+import scala.concurrent.{Await, blocking}
 import de.sciss.filecache.Producer
 import Overview.{Output => OvrOut, Input => OvrIn, Config => OvrSpec}
 import scala.annotation.elidable
 import de.sciss.processor.Processor
 import scala.util.Success
+import scala.concurrent.duration.Duration
 
 private object OverviewImpl {
   private lazy val log10 = FastLog(base = 10, q = 11)
@@ -98,22 +99,20 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
 
   // ---- submission and start ----
 
-  private val futOut = producer.acquireWith(config, {
-    start()(producer.executionContext)
-    this
-  })
-  futOut.onSuccess({
-    case out @ OvrOut(_, f) =>
-      debug(s"future succeeded with $out")
-      sync.synchronized {
-        if (!disposed && futRes == null) {
-          futRes = AudioFile.openRead(f)
-          debug("opened existing decimation")
-          var i = 0; while (i < decimSpecs.length ) { decimSpecs(i).markReady(); i += 1 }
-          dispatch(Processor.Result(this, Success(out)))
-        }
-      }
-  })(producer.executionContext) // crucial not to demand context from Processor trait because that is not known yet
+  start()(producer.executionContext)
+
+  //  onSuccess({
+  //    case out @ OvrOut(_, f) =>
+  //      debug(s"future succeeded with $out")
+  //      sync.synchronized {
+  //        if (!disposed && futRes == null) {
+  //          futRes = AudioFile.openRead(f)
+  //          debug("opened existing decimation")
+  //          var i = 0; while (i < decimSpecs.length ) { decimSpecs(i).markReady(); i += 1 }
+  //          dispatch(Processor.Result(this, Success(out)))
+  //        }
+  //      }
+  //  })(producer.executionContext) // crucial not to demand context from Processor trait because that is not known yet
 
   // ---- public ----
 
@@ -275,7 +274,8 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
         releaseListeners()
         manager.releaseImage(imgSpec)
         // decimAF.cleanUp()
-        futOut.onSuccess({
+
+        /* futOut. */ onSuccess({
           case _ => sync.synchronized {
             futRes.cleanUp()   // XXX delete?
             futRes = null
@@ -288,7 +288,24 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
 
   // ---- protected ----
 
-  protected def body(): OvrOut = blocking {
+  protected def body(): OvrOut = {
+    val futOut  = producer.acquire(config, generate())
+    val out     = Await.result(futOut, Duration.Inf)
+    debug(s"future succeeded with $out")
+    blocking {
+      sync.synchronized {
+        if (!disposed && futRes == null) {
+          futRes = AudioFile.openRead(out.output)
+          debug("opened existing decimation")
+          var i = 0; while (i < decimSpecs.length ) { decimSpecs(i).markReady(); i += 1 }
+          // dispatch(Processor.Result(this, Success(out)))
+        }
+      }
+    }
+    out
+  }
+
+  private def generate(): OvrOut = blocking {
     debug("enter body")
     val constQ = manager.allocateConstQ(config.sonogram)
     // val fftSize = constQ.getFFTSize
