@@ -40,8 +40,6 @@ import scala.concurrent.{Await, blocking}
 import de.sciss.filecache.Producer
 import Overview.{Output => OvrOut, Input => OvrIn, Config => OvrSpec}
 import scala.annotation.elidable
-import de.sciss.processor.Processor
-import scala.util.Success
 import scala.concurrent.duration.Duration
 
 private object OverviewImpl {

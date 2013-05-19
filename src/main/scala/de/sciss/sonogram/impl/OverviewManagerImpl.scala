@@ -71,7 +71,7 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
   /** This is a constant, but can be overridden by subclasses. */
   protected val decimation  = List(1, 6, 6, 6, 6)
 
-  private var constQCache   = Map.empty[SonogramSpec, ConstQCache]
+  // private var constQCache   = Map.empty[SonogramSpec, ConstQCache]
   private var imageCache    = Map.empty[(Int, Int), ImageCache]
   private var fileBufCache  = Map.empty[ImageSpec, FileBufCache]
 
@@ -171,25 +171,27 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
   }
 
   def allocateConstQ(spec: SonogramSpec): ConstQ = {
-    sync.synchronized {
-      val entry = constQCache.get(spec) getOrElse {
-        val res = new ConstQCache(constQFromSpec(spec))
-        constQCache += spec -> res
-        res
-      }
-      entry.useCount += 1
-      entry.constQ
-    }
+    //    sync.synchronized {
+    //      val entry = constQCache.get(spec) getOrElse {
+    //    val res = new ConstQCache(
+    constQFromSpec(spec)
+    //    )
+    //        constQCache += spec -> res
+    //    res
+    //      }
+    //      entry.useCount += 1
+    //      entry.constQ
+    //    }
   }
 
   def releaseConstQ(spec: SonogramSpec) {
-    sync.synchronized {
-      val entry = constQCache(spec) // let it throw an exception if not contained
-      entry.useCount -= 1
-      if (entry.useCount == 0) {
-        constQCache -= spec
-      }
-    }
+    //    sync.synchronized {
+    //      val entry = constQCache(spec) // let it throw an exception if not contained
+    //      entry.useCount -= 1
+    //      if (entry.useCount == 0) {
+    //        constQCache -= spec
+    //      }
+    //    }
   }
 
   def allocateImage(spec: ImageSpec): Image = {
