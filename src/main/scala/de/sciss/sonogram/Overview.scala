@@ -2,21 +2,9 @@
  *  Overview.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2013 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2014 Hanns Holger Rutz. All rights reserved.
  *
- *	This software is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	as published by the Free Software Foundation; either
- *	version 2, june 1991 of the License, or (at your option) any later version.
- *
- *	This software is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *	General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public
- *	License (gpl.txt) along with this software; if not, write to the Free Software
- *	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *	This software is published under the GNU General Public License v2+
  *
  *
  *	For further information, please contact Hanns Holger Rutz at
@@ -37,7 +25,7 @@ object Overview {
 
   object Config {
     implicit object Serializer extends ImmutableSerializer[Config] {
-      def write(v: Config, out: DataOutput) {
+      def write(v: Config, out: DataOutput): Unit = {
         import v._
         out.writeShort(COOKIE)
         out.writeUTF(file.getCanonicalPath)
@@ -45,7 +33,7 @@ object Overview {
 //        out.writeLong(lastModified)
         SonogramSpec.Serializer.write(sonogram, out)
         out.writeShort(decimation.size)
-        decimation.foreach(out.writeShort _)
+        decimation.foreach(out.writeShort)
       }
 
       def read(in: DataInput): Config = {
@@ -72,7 +60,7 @@ object Overview {
 
   object Input {
     implicit object Serializer extends ImmutableSerializer[Input] {
-      def write(v: Input, out: DataOutput) {
+      def write(v: Input, out: DataOutput): Unit = {
         import v._
         out.writeShort(COOKIE)
         AudioFileSpec.Serializer.write(fileSpec, out)
@@ -92,7 +80,7 @@ object Overview {
 
   object Output {
     implicit object Serializer extends ImmutableSerializer[Output] {
-      def write(v: Output, out: DataOutput) {
+      def write(v: Output, out: DataOutput): Unit = {
         import v._
         out.writeShort(COOKIE)
         Input.Serializer.write(input, out)
@@ -113,7 +101,7 @@ object Overview {
   //  * @param fileSpec     The specification of the input audio file.
   //  * @param lastModified The time stamp of the input audio file.
 
-  //  private def makeAllAvailable() {
+  //  private def makeAllAvailable(): Unit = {
   //    decimSpecs.foreach(d => d.windowsReady = d.numWindows)
   //  }
 

@@ -2,21 +2,9 @@
  *  Overview.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2013 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2014 Hanns Holger Rutz. All rights reserved.
  *
- *	This software is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	as published by the Free Software Foundation; either
- *	version 2, june 1991 of the License, or (at your option) any later version.
- *
- *	This software is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *	General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public
- *	License (gpl.txt) along with this software; if not, write to the Free Software
- *	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *	This software is published under the GNU General Public License v2+
  *
  *
  *	For further information, please contact Hanns Holger Rutz at
@@ -44,7 +32,7 @@ import scala.concurrent.duration.Duration
 
 private object OverviewImpl {
   private lazy val log10 = FastLog(base = 10, q = 11)
-  @elidable(elidable.CONFIG) def debug(what: => String) { println(s"<overview> $what") }
+  @elidable(elidable.CONFIG) def debug(what: => String): Unit = println(s"<overview> $what")
 }
 
 private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
@@ -71,9 +59,9 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
   // private def decimAF: AudioFile = ...
 
   // caller must have sync
-  private def seekWindow(af: AudioFile, decim: DecimationSpec, idx: Long) {
+  private def seekWindow(af: AudioFile, decim: DecimationSpec, idx: Long): Unit = {
     val framePos = idx * numKernels + decim.offset
-    if ( /* (decim.windowsReady > 0L) && */ (af.position != framePos)) {
+    if ( /* (decim.windowsReady > 0L) && */ af.position != framePos) {
       // debug(s"Seek decim file, idx = $idx, offset = ${decim.offset}; numKernels = $numKernels, framePos = $framePos")
       // debug(s"File $af; numFrames = ${af.numFrames}; numChannels = ${af.numChannels}; isOpen? ${af.isOpen}")
       af.seek(framePos)
@@ -117,7 +105,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
   //   val rnd = new java.util.Random()
   def paint(spanStart: Double, spanStop: Double, g2: Graphics2D, tx: Int,
             ty: Int, width: Int, height: Int,
-            ctrl: PaintController) {
+            ctrl: PaintController): Unit = {
 
     val daf  = futRes
     if (daf == null) return
@@ -136,7 +124,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
     // the vertical decimation factor is input num bands * num-channels divided by screen span
     // (this is the integer floor)
     val vDecim      = math.max(1, (numChannels * numKernels) / height)
-    // the downsampled image height. the image only
+    // the down-sampled image height. the image only
     // contains _one_ channel, and we iterate over the channels
     // re-using the same image.
     // (used-image-height)
@@ -178,7 +166,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
 
       val uiw = imgW - (imgW % hDecim)  // used image width: largest width being a multiple of the h decimation
 
-      // debug(f"paint span $spanStart%1.1f...$spanStop%1.1f on $width (ideal $idealDecim%1.2f, file ${in.totalDecim}, inplace $hDecim); hScale $hScale%1.4f")
+      // debug(f"paint span $spanStart%1.1f...$spanStop%1.1f on $width (ideal $idealDecim%1.2f, file ${in.totalDecim}, in-place $hDecim); hScale $hScale%1.4f")
 
       sync.synchronized {
         if (in.windowsReady <= start) return // or draw busy-area
@@ -187,7 +175,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
         val numWindows = math.min(in.windowsReady, stop) - start
         while (windowsRead < numWindows) {
           // the in-file chunk length is either the available image buffer width, or the windows left.
-          val chunkLen2 = math.min((uiw /* OOO - xReset */), numWindows - windowsRead).toInt
+          val chunkLen2 = math.min(uiw, numWindows - windowsRead).toInt
           // ???
           val chunkLen  = chunkLen2 // OOO + xReset
           val w = (chunkLen + hDecim - 1) / hDecim  // h decimated frames (ceil integer)
@@ -265,23 +253,21 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
     }
   }
 
-  def dispose() {
-    sync.synchronized(
-      if (!disposed) {
-        disposed = true
-        releaseListeners()
-        manager.releaseImage(imgSpec)
-        // decimAF.cleanUp()
+  def dispose(): Unit = sync.synchronized {
+    if (!disposed) {
+      disposed = true
+      releaseListeners()
+      manager.releaseImage(imgSpec)
+      // decimAF.cleanUp()
 
-        /* futOut. */ onSuccess({
-          case _ => sync.synchronized {
-            futRes.cleanUp()   // XXX delete?
-            futRes = null
-            producer.release(config)
-          }
-        })(producer.executionContext)
-      }
-    )
+      /* futOut. */ onSuccess({
+        case _ => sync.synchronized {
+          futRes.cleanUp()   // XXX delete?
+          futRes = null
+          producer.release(config)
+        }
+      })(producer.executionContext)
+    }
   }
 
   // ---- protected ----
@@ -371,7 +357,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
     pred
   }
 
-  private def primaryRender(daf: AudioFile, constQ: ConstQ, in: AudioFile) {
+  private def primaryRender(daf: AudioFile, constQ: ConstQ, in: AudioFile): Unit = {
     debug("enter primaryRender")
     val fftSize     = constQ.fftSize
     val stepSize    = config.sonogram.stepSize
@@ -429,7 +415,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
     }
   }
 
-  // XXX THIS NEEDS BIGGER BUFSIZE BECAUSE NOW WE SEEK IN THE SAME FILE
+  // XXX THIS NEEDS BIGGER BUF-SIZE BECAUSE NOW WE SEEK IN THE SAME FILE
   // FOR INPUT AND OUTPUT!!!
   private def secondaryRender(daf: AudioFile, in: DecimationSpec, out: DecimationSpec) {
     debug(s"enter secondaryRender ${in.decimFactor}")

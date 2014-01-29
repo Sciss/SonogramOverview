@@ -2,26 +2,13 @@
  *  OverviewManagerImpl.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2013 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2014 Hanns Holger Rutz. All rights reserved.
  *
- *	This software is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU General Public License
- *	as published by the Free Software Foundation; either
- *	version 2, june 1991 of the License, or (at your option) any later version.
- *
- *	This software is distributed in the hope that it will be useful,
- *	but WITHOUT ANY WARRANTY; without even the implied warranty of
- *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
- *	General Public License for more details.
- *
- *	You should have received a copy of the GNU General Public
- *	License (gpl.txt) along with this software; if not, write to the Free Software
- *	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *	This software is published under the GNU General Public License v2+
  *
  *
  *	For further information, please contact Hanns Holger Rutz at
  *	contact@sciss.de
- *    28-Mar-10   extracted from Kontur. Removing app package dependancy
  */
 
 package de.sciss.sonogram
@@ -133,7 +120,7 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
     }
   }
 
-  def release(overview: Overview) {
+  def release(overview: Overview): Unit = {
     val ovrSpec = overview.config
     sync.synchronized {
       val entry = overviewCache.getOrElse(ovrSpec,
@@ -163,11 +150,9 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
     (Overview.Config(job.file, sonogram, decimation), Overview.Input(inSpec, job.file.lastModified()))
   }
 
-  def dispose() {
-    sync.synchronized {
-      releaseListeners()
-      overviewCache.foreach(_._2.overview.abort())
-    }
+  def dispose(): Unit = sync.synchronized {
+    releaseListeners()
+    overviewCache.foreach(_._2.overview.abort())
   }
 
   def allocateConstQ(spec: SonogramSpec): ConstQ = {
@@ -184,7 +169,7 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
     //    }
   }
 
-  def releaseConstQ(spec: SonogramSpec) {
+  def releaseConstQ(spec: SonogramSpec): Unit = {
     //    sync.synchronized {
     //      val entry = constQCache(spec) // let it throw an exception if not contained
     //      entry.useCount -= 1
@@ -194,63 +179,51 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
     //    }
   }
 
-  def allocateImage(spec: ImageSpec): Image = {
-    sync.synchronized {
-      val img     = allocateImage(spec.width, spec.height)
-      val fileBuf = allocateFileBuf(spec)
-      new Image(img, fileBuf)
+  def allocateImage(spec: ImageSpec): Image = sync.synchronized {
+    val img     = allocateImage(spec.width, spec.height)
+    val fileBuf = allocateFileBuf(spec)
+    new Image(img, fileBuf)
+  }
+
+  def releaseImage(spec: ImageSpec): Unit = sync.synchronized {
+    releaseImage(spec.width, spec.height)
+    releaseFileBuf(spec)
+  }
+
+  private def allocateImage(width: Int, height: Int): BufferedImage = sync.synchronized {
+    val entry = imageCache.getOrElse((width, height), {
+      val res = new ImageCache(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB))
+      imageCache += (width, height) -> res
+      res
+    })
+    entry.useCount += 1
+    entry.img
+  }
+
+  private def allocateFileBuf(spec: ImageSpec): Array[Array[Float]] = sync.synchronized {
+    val entry = fileBufCache.getOrElse(spec, {
+      val res = new FileBufCache(Array.ofDim[Float](spec.numChannels, spec.width * spec.height))
+      fileBufCache += spec -> res
+      res
+    })
+    entry.useCount += 1
+    entry.buf
+  }
+
+  private def releaseImage(width: Int, height: Int): Unit = sync.synchronized {
+    val key         = (width, height)
+    val entry       = imageCache(key) // let it throw an exception if not contained
+    entry.useCount -= 1
+    if (entry.useCount == 0) {
+      imageCache -= key
     }
   }
 
-  def releaseImage(spec: ImageSpec) {
-    sync.synchronized {
-      releaseImage(spec.width, spec.height)
-      releaseFileBuf(spec)
-    }
-  }
-
-  private def allocateImage(width: Int, height: Int): BufferedImage = {
-    sync.synchronized {
-      val entry = imageCache.getOrElse((width, height), {
-        val res = new ImageCache(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB))
-        imageCache += (width, height) -> res
-        res
-      })
-      entry.useCount += 1
-      entry.img
-    }
-  }
-
-  private def allocateFileBuf(spec: ImageSpec): Array[Array[Float]] = {
-    sync.synchronized {
-      val entry = fileBufCache.getOrElse(spec, {
-        val res = new FileBufCache(Array.ofDim[Float](spec.numChannels, spec.width * spec.height))
-        fileBufCache += spec -> res
-        res
-      })
-      entry.useCount += 1
-      entry.buf
-    }
-  }
-
-  private def releaseImage(width: Int, height: Int) {
-    sync.synchronized {
-      val key         = (width, height)
-      val entry       = imageCache(key) // let it throw an exception if not contained
-      entry.useCount -= 1
-      if (entry.useCount == 0) {
-        imageCache -= key
-      }
-    }
-  }
-
-  private def releaseFileBuf(spec: ImageSpec) {
-    sync.synchronized {
-      val entry = fileBufCache(spec) // let it throw an exception if not contained
-      entry.useCount -= 1
-      if (entry.useCount == 0) {
-        fileBufCache -= spec
-      }
+  private def releaseFileBuf(spec: ImageSpec): Unit = sync.synchronized {
+    val entry = fileBufCache(spec) // let it throw an exception if not contained
+    entry.useCount -= 1
+    if (entry.useCount == 0) {
+      fileBufCache -= spec
     }
   }
 
