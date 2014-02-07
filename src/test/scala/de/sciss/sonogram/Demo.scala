@@ -84,7 +84,6 @@ object Demo extends SwingApplicationImpl("Demo") {
 
       new WindowImpl {
         def handler = windowHandler
-        protected def style = Window.Regular
 
         title     = f.getName
         file      = Some(f)

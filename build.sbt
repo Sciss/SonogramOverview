@@ -1,6 +1,6 @@
 name         := "SonogramOverview"
 
-version      := "1.6.3-SNAPSHOT"
+version      := "1.7.0"
 
 organization := "de.sciss"
 
@@ -10,16 +10,16 @@ homepage     := Some(url("https://github.com/Sciss/" + name.value))
 
 licenses     := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion := "2.10.1"
+scalaVersion := "2.10.3"
 
 libraryDependencies ++= Seq(
-  "de.sciss" %% "scalaaudiofile"   % "1.4.+",
-  "de.sciss" %% "scissdsp"         % "1.2.+",
-  "de.sciss" %  "intensitypalette" % "1.0.0",
-  "de.sciss" %% "processor"        % "0.2.+",
-  "de.sciss" %% "filecache"        % "0.2.+",
-  "de.sciss" %% "span"             % "1.2.+",
-  "de.sciss" %% "desktop"          % "0.3.+" % "test"
+  "de.sciss" %% "scalaaudiofile"    % "1.4.1+",
+  "de.sciss" %% "scissdsp"          % "1.2.+",
+  "de.sciss" %  "intensitypalette"  % "1.0.0",
+  "de.sciss" %% "processor"         % "0.2.+",
+  "de.sciss" %% "filecache-mutable" % "0.3.+",
+  "de.sciss" %% "span"              % "1.2.+",
+  "de.sciss" %% "desktop"           % "0.4.+" % "test"
 )
 
 retrieveManaged := true

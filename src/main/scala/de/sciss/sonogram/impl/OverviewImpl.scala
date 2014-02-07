@@ -25,7 +25,7 @@ import collection.breakOut
 import de.sciss.sonogram.ResourceManager.ImageSpec
 import java.io.File
 import scala.concurrent.{Await, blocking}
-import de.sciss.filecache.Producer
+import de.sciss.filecache.MutableProducer
 import Overview.{Output => OvrOut, Input => OvrIn, Config => OvrSpec}
 import scala.annotation.elidable
 import scala.concurrent.duration.Duration
@@ -37,7 +37,7 @@ private object OverviewImpl {
 
 private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
                                            manager: ResourceManager, // folder: File,
-                                           producer: Producer[OvrSpec, OvrOut])
+                                           producer: MutableProducer[OvrSpec, OvrOut])
   extends Overview with ProcessorImpl[OvrOut, Overview] {
 
   import OverviewImpl._
@@ -273,7 +273,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
   // ---- protected ----
 
   protected def body(): OvrOut = {
-    val futOut  = producer.acquire(config, generate())
+    val futOut  = producer.acquire(config)(generate())
     val out     = Await.result(futOut, Duration.Inf)
     debug(s"future succeeded with $out")
     blocking {

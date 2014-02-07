@@ -20,7 +20,7 @@ import de.sciss.dsp.ConstQ
 import de.sciss.synth.io.{AudioFile, Frames}
 import de.sciss.sonogram.ResourceManager.{Image, ImageSpec}
 import de.sciss.model.impl.ModelImpl
-import de.sciss.filecache.{Limit, Producer}
+import de.sciss.filecache
 
 private object OverviewManagerImpl {
   private final class ConstQCache(val constQ: ConstQ) {
@@ -67,7 +67,7 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
   private val sync          = new AnyRef
 
   private val producer = {
-    val cc = Producer.Config[OvrSpec, OvrOut]()
+    val cc = filecache.Config[OvrSpec, OvrOut]()
     cc.extension  = "sono"
     cc.accept     = { (spec: OvrSpec, out: OvrOut) =>
       val specAF = AudioFile.readSpec(spec.file)
@@ -87,19 +87,19 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
 
     config.caching match {
       case Some(c) =>
-        cc.capacity = Limit(space = c.sizeLimit)
+        cc.capacity = filecache.Limit(space = c.sizeLimit)
         debug(s"Producer capacity is ${cc.capacity}")
         cc.folder   = c.folder
 
       case _ =>
-        cc.capacity = Limit(count = 0, space = 0L)
+        cc.capacity = filecache.Limit(count = 0, space = 0L)
         val f = File.createTempFile(".cache", "")
         f.delete()
         f.mkdir()
         f.deleteOnExit()
         cc.folder   = f
     }
-    Producer(cc)
+    filecache.MutableProducer(cc)
   }
 
   //  private val consumer = Consumer(producer) { ovrSpec =>
