@@ -1,6 +1,6 @@
 name         := "SonogramOverview"
 
-version      := "1.7.0"
+version      := "1.7.1-SNAPSHOT"
 
 organization := "de.sciss"
 
@@ -10,10 +10,12 @@ homepage     := Some(url("https://github.com/Sciss/" + name.value))
 
 licenses     := Seq("GPL v2+" -> url("http://www.gnu.org/licenses/gpl-2.0.txt"))
 
-scalaVersion := "2.10.3"
+scalaVersion := "2.11.0-RC3"
+
+crossScalaVersions := Seq("2.11.0-RC3", "2.10.4")
 
 libraryDependencies ++= Seq(
-  "de.sciss" %% "scalaaudiofile"    % "1.4.1+",
+  "de.sciss" %% "scalaaudiofile"    % "1.4.2+",
   "de.sciss" %% "scissdsp"          % "1.2.+",
   "de.sciss" %  "intensitypalette"  % "1.0.0",
   "de.sciss" %% "processor"         % "0.2.+",
@@ -22,7 +24,7 @@ libraryDependencies ++= Seq(
   "de.sciss" %% "desktop"           % "0.4.+" % "test"
 )
 
-retrieveManaged := true
+// retrieveManaged := true
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature")
 
