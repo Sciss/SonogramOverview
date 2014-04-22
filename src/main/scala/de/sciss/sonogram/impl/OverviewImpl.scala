@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2010-2014 Hanns Holger Rutz. All rights reserved.
  *
- *	This software is published under the GNU General Public License v2+
+ *	This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *	For further information, please contact Hanns Holger Rutz at
@@ -323,7 +323,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
           daf.flush()
           // well... currently the sequential downsampling doesn't really
           // permit incremental progress notifications :-(
-          progress(1f)
+          progress = 1.0
           success = true
         } finally {
           if (!success) daf.cleanUp()
@@ -417,7 +417,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
 
   // XXX THIS NEEDS BIGGER BUF-SIZE BECAUSE NOW WE SEEK IN THE SAME FILE
   // FOR INPUT AND OUTPUT!!!
-  private def secondaryRender(daf: AudioFile, in: DecimationSpec, out: DecimationSpec) {
+  private def secondaryRender(daf: AudioFile, in: DecimationSpec, out: DecimationSpec): Unit = {
     debug(s"enter secondaryRender ${in.decimFactor}")
     val dec         = out.decimFactor
     val bufSize     = dec * numKernels

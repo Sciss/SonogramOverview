@@ -4,7 +4,7 @@
  *
  *  Copyright (c) 2010-2014 Hanns Holger Rutz. All rights reserved.
  *
- *	This software is published under the GNU General Public License v2+
+ *	This software is published under the GNU Lesser General Public License v2.1+
  *
  *
  *	For further information, please contact Hanns Holger Rutz at
@@ -17,11 +17,10 @@ import java.awt.FileDialog
 import java.io.File
 import de.sciss.dsp.Util
 import util.control.NonFatal
-import java.awt.event.KeyEvent
 import de.sciss.desktop.impl.{WindowImpl, SwingApplicationImpl}
 import de.sciss.desktop.{Window, KeyStrokes, Menu}
 import scala.swing.{Swing, Component, Orientation, Slider, BorderPanel}
-import scala.swing.event.ValueChanged
+import scala.swing.event.{Key, ValueChanged}
 import Swing._
 
 object Demo extends SwingApplicationImpl("Demo") {
@@ -31,10 +30,9 @@ object Demo extends SwingApplicationImpl("Demo") {
 
   lazy val menuFactory: Menu.Root = {
     import KeyStrokes._
-    import KeyEvent._
     Menu.Root()
       .add(Menu.Group("file", "File")
-      .add(Menu.Item("open")("Open" -> (menu1 + VK_O)) {
+      .add(Menu.Item("open")("Open" -> (menu1 + Key.O)) {
         openDialog()
       })
     )
