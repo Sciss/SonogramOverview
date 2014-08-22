@@ -1,6 +1,6 @@
 name         := "SonogramOverview"
 
-version      := "1.7.1"
+version      := "1.8.0-SNAPSHOT"
 
 organization := "de.sciss"
 
@@ -10,9 +10,9 @@ homepage     := Some(url("https://github.com/Sciss/" + name.value))
 
 licenses     := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt"))
 
-scalaVersion := "2.11.0"
+scalaVersion := "2.11.2"
 
-crossScalaVersions := Seq("2.11.0", "2.10.4")
+crossScalaVersions := Seq("2.11.2", "2.10.4")
 
 libraryDependencies ++= Seq(
   "de.sciss" %% "scalaaudiofile"    % "1.4.3",
@@ -48,7 +48,7 @@ buildInfoPackage := "de.sciss.sonogram"
 publishMavenStyle := true
 
 publishTo :=
-  Some(if (version.value endsWith "-SNAPSHOT")
+  Some(if (isSnapshot.value)
     "Sonatype Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
   else
     "Sonatype Releases"  at "https://oss.sonatype.org/service/local/staging/deploy/maven2"

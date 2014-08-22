@@ -21,6 +21,7 @@ import scala.util.Success
 
 class SonogramComponent
   extends JComponent with PaintController {
+
   private var sonoO: Option[Overview] = None
   private var boostVar: Float = 1f
 

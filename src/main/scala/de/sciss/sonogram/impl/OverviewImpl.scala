@@ -18,7 +18,6 @@ import java.awt.Graphics2D
 import java.awt.image.DataBufferInt
 import de.sciss.dsp.{ConstQ, FastLog}
 import de.sciss.synth.io.{SampleFormat, AudioFileSpec, AudioFileType, AudioFile}
-import de.sciss.intensitypalette.IntensityPalette
 import java.{util => ju}
 import de.sciss.processor.impl.ProcessorImpl
 import collection.breakOut
@@ -41,6 +40,8 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
   extends Overview with ProcessorImpl[OvrOut, Overview] {
 
   import OverviewImpl._
+
+  var palette: Overview.Palette = Overview.Palette.Intensity
 
   private var disposed    = false
   val inputSpec     = input.fileSpec
@@ -168,6 +169,8 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
 
       // debug(f"paint span $spanStart%1.1f...$spanStop%1.1f on $width (ideal $idealDecim%1.2f, file ${in.totalDecim}, in-place $hDecim); hScale $hScale%1.4f")
 
+      val p = palette
+
       sync.synchronized {
         if (in.windowsReady <= start) return // or draw busy-area
         seekWindow(daf, in, start)  // continuously read from here
@@ -230,9 +233,8 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
                   vdi  += 1
                 }
                 val amp = ctrl.adjustGain(sum / (vDecim * ehd), (iOff + xOff) / hScale)
-                iBuf(iOff) = IntensityPalette.apply(
-                  (l10.calc(math.max(1.0e-9f, amp)) + pixOff) * pixScale
-                )
+                val v   = (l10.calc(math.max(1.0e-9f, amp)) + pixOff) * pixScale
+                iBuf(iOff) = p(v) // IntensityPalette.apply()
                 y    += 1
                 iOff -= imgW
               }

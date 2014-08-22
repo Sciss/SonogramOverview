@@ -14,6 +14,7 @@
 package de.sciss.sonogram
 
 import java.awt.Graphics2D
+import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.model.Model
 import de.sciss.synth.io.AudioFileSpec
 import de.sciss.processor.Processor
@@ -21,7 +22,7 @@ import java.io.File
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
 object Overview {
-  private final val COOKIE = 0x4f56
+  private final val COOKIE = 0x4F56
 
   object Config {
     implicit object Serializer extends ImmutableSerializer[Config] {
@@ -29,8 +30,8 @@ object Overview {
         import v._
         out.writeShort(COOKIE)
         out.writeUTF(file.getCanonicalPath)
-//        AudioFileSpec.Serializer.write(fileSpec, out)
-//        out.writeLong(lastModified)
+        //        AudioFileSpec.Serializer.write(fileSpec, out)
+        //        out.writeLong(lastModified)
         SonogramSpec.Serializer.write(sonogram, out)
         out.writeShort(decimation.size)
         decimation.foreach(out.writeShort)
@@ -40,8 +41,8 @@ object Overview {
         val cookie = in.readShort()
         require(cookie == COOKIE, s"Unexpected cookie $cookie")
         val file          = new File(in.readUTF())
-//        val fileSpec      = AudioFileSpec.Serializer.read(in)
-//        val lastModified  = in.readLong()
+        //        val fileSpec      = AudioFileSpec.Serializer.read(in)
+        //        val lastModified  = in.readLong()
         val sonogram      = SonogramSpec.Serializer.read(in)
         val numDecim      = in.readShort()
         val decimation    = List.fill(numDecim)(in.readShort().toInt)
@@ -98,26 +99,31 @@ object Overview {
   }
   final case class Output(input: Input, output: File)
 
-  //  * @param fileSpec     The specification of the input audio file.
-  //  * @param lastModified The time stamp of the input audio file.
-
-  //  private def makeAllAvailable(): Unit = {
-  //    decimSpecs.foreach(d => d.windowsReady = d.numWindows)
-  //  }
-
-  //  def apply(manager: OverviewManager, file: FileSpec, decimation: AudioFile): Overview =
-  //    new Impl(manager, file, decimation)
-
-  // var verbose = false
-
-  //  def openRead (config: Config,    decimation: AudioFile,    manager: OverviewManager): Overview = ...
-  //  def openWrite(config: Config, /* decimation: AudioFile, */ manager: OverviewManager): Overview = ...
-
   type Observer = Model.Listener[Processor.Update[Any, Overview]]
+
+  /** A palette function maps a normalized value between zero and one
+    * to an ARGB integer color value.
+    */
+  type Palette = Float => Int
+  object Palette {
+    final val Intensity: Palette = IntensityPalette.apply
+    final val Gray     : Palette = { x =>
+      val c = (math.max(0f, math.min(1f, 1f - x)) * 0xFF + 0.5f).toInt
+      0xFF000000 | (c << 16) | (c << 8) | c
+    }
+
+    def reverse(in: Palette): Palette = x => in(1.0f - x)
+    def inverse(in: Palette): Palette = { x =>
+      val colr = in(x)
+      colr ^ 0xFFFFFF
+    }
+  }
 }
 trait Overview extends Processor[Any, Overview] {
   def config: Overview.Config
   def inputSpec: AudioFileSpec
+
+  var palette: Overview.Palette
 
   // def dispose(): Unit
 

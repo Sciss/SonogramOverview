@@ -19,7 +19,7 @@ import de.sciss.dsp.Util
 import util.control.NonFatal
 import de.sciss.desktop.impl.{WindowImpl, SwingApplicationImpl}
 import de.sciss.desktop.{Window, KeyStrokes, Menu}
-import scala.swing.{Swing, Component, Orientation, Slider, BorderPanel}
+import scala.swing._
 import scala.swing.event.{Key, ValueChanged}
 import Swing._
 
@@ -28,14 +28,36 @@ object Demo extends SwingApplicationImpl("Demo") {
 
   def useCache = false
 
+  private val palettes0 = Seq(
+    "Intensity" -> Overview.Palette.Intensity,
+    "Gray"      -> Overview.Palette.Gray
+  )
+  private val palettes = palettes0.flatMap { case (namePlain, funPlain) =>
+    val nameRev  = s"$namePlain Reverse"
+    val nameInv  = s"$namePlain Invert"
+    val nameBoth = s"$namePlain Reverse+Invert"
+    val funRev   = Overview.Palette.reverse(funPlain)
+    val funInv   = Overview.Palette.inverse(funPlain)
+    val funBoth  = Overview.Palette.inverse(Overview.Palette.reverse(funPlain))
+    Seq((namePlain, funPlain), (nameRev, funRev), (nameInv, funInv), (nameBoth, funBoth))
+  }
+
   lazy val menuFactory: Menu.Root = {
     import KeyStrokes._
+
+    val groupPalette = Menu.Group("palette", "Palette")
+    palettes.zipWithIndex.foreach { case ((name0, fun), idx) =>
+      val item = Menu.Item(s"palette-$idx", name0 -> (menu1 + Key(Key.Key0.id + idx)))
+      groupPalette.add(item)
+    }
+
     Menu.Root()
       .add(Menu.Group("file", "File")
-      .add(Menu.Item("open")("Open" -> (menu1 + Key.O)) {
-        openDialog()
-      })
-    )
+        .add(Menu.Item("open")("Open" -> (menu1 + Key.O)) {
+          openDialog()
+        })
+      )
+      .add(groupPalette)
   }
 
   val mgr = {
@@ -90,6 +112,15 @@ object Demo extends SwingApplicationImpl("Demo") {
           add(ggBoost, BorderPanel.Position.East)
         }
 
+        bindMenus(palettes.zipWithIndex.map { case ((name0, fun), idx) =>
+          val key = s"palette.palette-$idx"
+          val action = Action(null) {
+            ov.palette = fun
+            view.repaint()
+          }
+          (key, action)
+        } : _*)
+
         size = (800, 300)
         // f.setLocationRelativeTo(null)
 
@@ -104,10 +135,7 @@ object Demo extends SwingApplicationImpl("Demo") {
       }
     }
     catch {
-      case NonFatal(e) => {
-        e.printStackTrace()
-        // sys.exit(1)
-      }
+      case NonFatal(e) => e.printStackTrace()
     }
   }
 
