@@ -2,7 +2,7 @@
  *  Overview.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2014 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2015 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -17,7 +17,7 @@ import java.awt.Graphics2D
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.model.Model
 import de.sciss.synth.io.AudioFileSpec
-import de.sciss.processor.Processor
+import de.sciss.processor.{ProcessorLike, Processor}
 import java.io.File
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
 
@@ -119,7 +119,7 @@ object Overview {
     }
   }
 }
-trait Overview extends Processor[Any, Overview] {
+trait Overview extends ProcessorLike[Any, Overview] {
   def config: Overview.Config
   def inputSpec: AudioFileSpec
 
