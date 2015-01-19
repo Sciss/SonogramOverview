@@ -1,6 +1,6 @@
 name         := "SonogramOverview"
 
-version      := "1.8.0"
+version      := "1.9.0"
 
 organization := "de.sciss"
 
@@ -15,13 +15,13 @@ scalaVersion := "2.11.5"
 crossScalaVersions := Seq("2.11.5", "2.10.4")
 
 libraryDependencies ++= Seq(
-  "de.sciss" %% "scalaaudiofile"    % "1.4.3",
+  "de.sciss" %% "scalaaudiofile"    % "1.4.4",
   "de.sciss" %% "scissdsp"          % "1.2.1",
   "de.sciss" %  "intensitypalette"  % "1.0.0",
   "de.sciss" %% "processor"         % "0.4.0",
   "de.sciss" %% "filecache-mutable" % "0.3.2",
-  "de.sciss" %% "span"              % "1.2.1",
-  "de.sciss" %% "desktop"           % "0.5.2" % "test"
+  "de.sciss" %% "span"              % "1.3.0",
+  "de.sciss" %% "desktop"           % "0.6.0" % "test"
 )
 
 scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8")
