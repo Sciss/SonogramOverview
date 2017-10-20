@@ -1,6 +1,5 @@
 # SonogramOverview
 
-[![Flattr this](http://api.flattr.com/button/flattr-badge-large.png)](https://flattr.com/submit/auto?user_id=sciss&url=https%3A%2F%2Fgithub.com%2FSciss%2FSonogramOverview&title=SonogramOverview&language=Scala&tags=github&category=software)
 [![Build Status](https://travis-ci.org/Sciss/SonogramOverview.svg?branch=master)](https://travis-ci.org/Sciss/SonogramOverview)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/sonogramoverview_2.11/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/sonogramoverview_2.11)
 
