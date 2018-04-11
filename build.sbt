@@ -1,8 +1,22 @@
 lazy val baseName  = "SonogramOverview"
 lazy val baseNameL = baseName.toLowerCase
 
-lazy val projectVersion = "1.10.0-SNAPSHOT"
+lazy val projectVersion = "1.10.0"
 lazy val mimaVersion    = "1.10.0"
+
+lazy val deps = new {
+  val main = new {
+    val audioFile        = "1.5.0"
+    val dsp              = "1.3.0"
+    val intensityPalette = "1.0.0"
+    val processor        = "0.4.1"
+    val fileCache        = "0.4.0"
+    val span             = "1.4.0"
+  }
+  val test = new {
+    val desktop          = "0.9.0"
+  }
+}
 
 lazy val root = project.withId(baseNameL).in(file("."))
   .enablePlugins(BuildInfoPlugin)
@@ -17,13 +31,13 @@ lazy val root = project.withId(baseNameL).in(file("."))
     crossScalaVersions := Seq("2.12.5", "2.11.12"),
     mimaPreviousArtifacts := Set("de.sciss" %% baseNameL % mimaVersion),
     libraryDependencies ++= Seq(
-      "de.sciss" %% "scalaaudiofile"    % "1.5.0-SNAPSHOT",
-      "de.sciss" %% "scissdsp"          % "1.3.0-SNAPSHOT",
-      "de.sciss" %  "intensitypalette"  % "1.0.0",
-      "de.sciss" %% "processor"         % "0.4.1",
-      "de.sciss" %% "filecache-mutable" % "0.4.0-SNAPSHOT",
-      "de.sciss" %% "span"              % "1.4.0-SNAPSHOT",
-      "de.sciss" %% "desktop"           % "0.9.0-SNAPSHOT" % "test"
+      "de.sciss" %% "audiofile"         % deps.main.audioFile,
+      "de.sciss" %% "scissdsp"          % deps.main.dsp,
+      "de.sciss" %  "intensitypalette"  % deps.main.intensityPalette,
+      "de.sciss" %% "processor"         % deps.main.processor,
+      "de.sciss" %% "filecache-mutable" % deps.main.fileCache,
+      "de.sciss" %% "span"              % deps.main.span,
+      "de.sciss" %% "desktop"           % deps.test.desktop % Test
     ),
     scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8", "-Xlint"),
     scalacOptions ++= Seq("-Xelide-below", "INFO"),     // elide debug logging!
