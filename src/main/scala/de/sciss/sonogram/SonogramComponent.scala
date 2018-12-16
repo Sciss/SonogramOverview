@@ -2,7 +2,7 @@
  *  SimpleSonogramView.scala
  *  (SonogramOverview)
  *
- *  Copyright (c) 2010-2015 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2018 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -13,10 +13,12 @@
 
 package de.sciss.sonogram
 
-import javax.swing.JComponent
-import java.awt.{RenderingHints, Color, Graphics, Graphics2D}
 import java.awt.image.ImageObserver
+import java.awt.{Color, Graphics, Graphics2D, RenderingHints}
+
 import de.sciss.processor.Processor
+import javax.swing.JComponent
+
 import scala.util.Success
 
 class SonogramComponent
@@ -46,7 +48,7 @@ class SonogramComponent
     }
   }
 
-  def sono = sonoO
+  def sono: Option[Overview] = sonoO
   def sono_=(newSono: Option[Overview]): Unit = {
     sonoO.foreach(_.removeListener(listener))
     sonoO = newSono
@@ -54,14 +56,14 @@ class SonogramComponent
     repaint()
   }
 
-  def boost = boostVar
+  def boost: Float = boostVar
   def boost_=(newBoost: Float): Unit = {
     boostVar = newBoost
     repaint()
   }
 
   // ---- PaintController ----
-  def adjustGain(amp: Float, pos: Double) = amp * boostVar
+  def adjustGain(amp: Float, pos: Double): Float = amp * boostVar
 
   def imageObserver: ImageObserver = this
 

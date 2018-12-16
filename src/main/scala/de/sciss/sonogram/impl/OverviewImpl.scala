@@ -2,7 +2,7 @@
  *  Overview.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2015 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2018 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -16,18 +16,19 @@ package impl
 
 import java.awt.Graphics2D
 import java.awt.image.DataBufferInt
-import de.sciss.dsp.{ConstQ, FastLog}
-import de.sciss.synth.io.{SampleFormat, AudioFileSpec, AudioFileType, AudioFile}
-import java.{util => ju}
-import de.sciss.processor.impl.ProcessorImpl
-import collection.breakOut
-import de.sciss.sonogram.ResourceManager.ImageSpec
 import java.io.File
-import scala.concurrent.{Await, blocking}
+import java.{util => ju}
+
+import de.sciss.dsp.{ConstQ, FastLog}
 import de.sciss.filecache.MutableProducer
-import Overview.{Output => OvrOut, Input => OvrIn, Config => OvrSpec}
+import de.sciss.processor.impl.ProcessorImpl
+import de.sciss.sonogram.Overview.{Config => OvrSpec, Input => OvrIn, Output => OvrOut}
+import de.sciss.sonogram.ResourceManager.ImageSpec
+import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
+
 import scala.annotation.elidable
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, blocking}
 
 private object OverviewImpl {
   private lazy val log10 = FastLog(base = 10, q = 11)
@@ -44,7 +45,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
   var palette: Overview.Palette = Overview.Palette.Intensity
 
   private var disposed    = false
-  val inputSpec     = input.fileSpec
+  val inputSpec: AudioFileSpec  = input.fileSpec
 
   // synchronized via sync
   private var futRes: AudioFile = _
@@ -74,14 +75,14 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
     var numWindows  = (inputSpec.numFrames + totalDecim - 1) / totalDecim
     var offset      = 0L
 
-    config.decimation.map(decimFactor => {
+    config.decimation.iterator.map { decimFactor =>
       if (offset != 0L) require(decimFactor % 2 == 0, s"Only even decimation factors supported: $decimFactor")
       totalDecim   *= decimFactor
       numWindows    = (numWindows + decimFactor - 1) / decimFactor
       val decimSpec = new DecimationSpec(offset, numWindows, decimFactor, totalDecim)
       offset       += numWindows * numKernels
       decimSpec
-    })(breakOut)
+    } .toArray
   }
 
   // ---- submission and start ----
@@ -262,13 +263,13 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
       manager.releaseImage(imgSpec)
       // decimAF.cleanUp()
 
-      /* futOut. */ onSuccess({
-        case _ => sync.synchronized {
+      /* futOut. */ foreach { _ =>
+        sync.synchronized {
           futRes.cleanUp()   // XXX delete?
           futRes = null
           producer.release(config)
         }
-      })(producer.executionContext)
+      } (producer.executionContext)
     }
   }
 

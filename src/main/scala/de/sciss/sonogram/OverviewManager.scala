@@ -2,7 +2,7 @@
  *  OverviewManager.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2015 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2018 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -15,13 +15,15 @@
 package de.sciss.sonogram
 
 import java.io.File
+
 import de.sciss.dsp.ConstQ
 import de.sciss.model.Model
-import util.Try
-import impl.{OverviewManagerImpl => Impl}
-import de.sciss.serial.{DataOutput, DataInput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.sonogram.impl.{OverviewManagerImpl => Impl}
+
 import scala.concurrent.ExecutionContext
-import language.implicitConversions
+import scala.language.implicitConversions
+import scala.util.Try
 
 object OverviewManager {
   object Job {
@@ -48,7 +50,7 @@ object OverviewManager {
 
   sealed trait Update { def overview: Overview }
   final case class Progress(overview: Overview, percent: Float) extends Update {
-    def toInt = (percent * 100).toInt
+    def toInt: Int = (percent * 100).toInt
   }
   final case class Result(overview: Overview, value: Try[Unit]) extends Update
 

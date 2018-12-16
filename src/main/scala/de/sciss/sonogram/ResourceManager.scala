@@ -2,7 +2,7 @@
  *  ResourceManager.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2015 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2018 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -13,8 +13,9 @@
 
 package de.sciss.sonogram
 
-import de.sciss.dsp.ConstQ
 import java.awt.image.BufferedImage
+
+import de.sciss.dsp.ConstQ
 import de.sciss.synth.io.Frames
 
 object ResourceManager {

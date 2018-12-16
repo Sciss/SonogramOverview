@@ -2,7 +2,7 @@
  *  SonogramSpec.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2015 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2018 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -51,5 +51,5 @@ object SonogramSpec {
 final case class SonogramSpec(sampleRate: Double, minFreq: Float, maxFreq: Float,
                               bandsPerOct: Int, /* maxTimeRes: Float, */ maxFFTSize: Int, stepSize: Int) {
 
-  val numKernels = ConstQ.getNumKernels(bandsPerOct, maxFreq, minFreq)
+  val numKernels: Int = ConstQ.getNumKernels(bandsPerOct, maxFreq, minFreq)
 }

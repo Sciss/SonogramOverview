@@ -2,7 +2,7 @@
  *  Overview.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2015 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2018 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -14,12 +14,13 @@
 package de.sciss.sonogram
 
 import java.awt.Graphics2D
+import java.io.File
+
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.model.Model
-import de.sciss.synth.io.AudioFileSpec
-import de.sciss.processor.{ProcessorLike, Processor}
-import java.io.File
+import de.sciss.processor.{Processor, ProcessorLike}
 import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.synth.io.AudioFileSpec
 
 object Overview {
   private final val COOKIE = 0x4F56

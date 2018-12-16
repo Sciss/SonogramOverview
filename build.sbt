@@ -1,20 +1,20 @@
 lazy val baseName  = "SonogramOverview"
 lazy val baseNameL = baseName.toLowerCase
 
-lazy val projectVersion = "1.10.0"
-lazy val mimaVersion    = "1.10.0"
+lazy val projectVersion = "1.11.0-SNAPSHOT"
+lazy val mimaVersion    = "1.11.0"
 
 lazy val deps = new {
   val main = new {
-    val audioFile        = "1.5.0"
-    val dsp              = "1.3.0"
+    val audioFile        = "1.5.1-SNAPSHOT"
+    val dsp              = "1.3.1-SNAPSHOT"
     val intensityPalette = "1.0.0"
-    val processor        = "0.4.1"
-    val fileCache        = "0.4.0"
-    val span             = "1.4.0"
+    val processor        = "0.4.2-SNAPSHOT"
+    val fileCache        = "0.5.0-SNAPSHOT"
+    val span             = "1.4.2"
   }
   val test = new {
-    val desktop          = "0.9.0"
+    val desktop          = "0.10.0-SNAPSHOT"
   }
 }
 
@@ -25,10 +25,10 @@ lazy val root = project.withId(baseNameL).in(file("."))
     version      := projectVersion,
     organization := "de.sciss",
     description  := "Sonogram view component for Scala/Swing, calculating offline from audio files",
-    homepage     := Some(url(s"https://github.com/Sciss/${name.value}")),
+    homepage     := Some(url(s"https://git.iem.at/sciss/${name.value}")),
     licenses     := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt")),
-    scalaVersion := "2.12.5",
-    crossScalaVersions := Seq("2.12.5", "2.11.12"),
+    scalaVersion := "2.13.0-M5",
+    crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0-M5"),
     mimaPreviousArtifacts := Set("de.sciss" %% baseNameL % mimaVersion),
     libraryDependencies ++= Seq(
       "de.sciss" %% "audiofile"         % deps.main.audioFile,
@@ -64,8 +64,8 @@ lazy val publishSettings = Seq(
   pomIncludeRepository := { _ => false },
   pomExtra := { val n = name.value
 <scm>
-  <url>git@github.com:Sciss/{n}.git</url>
-  <connection>scm:git:git@github.com:Sciss/{n}.git</connection>
+  <url>git@git.iem.at:sciss/{n}.git</url>
+  <connection>scm:git:git@git.iem.at:sciss/{n}.git</connection>
 </scm>
 <developers>
   <developer>

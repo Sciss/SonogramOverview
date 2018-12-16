@@ -2,7 +2,7 @@
  *  OverviewManagerImpl.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2015 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2018 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -16,16 +16,17 @@ package impl
 
 import java.awt.image.BufferedImage
 import java.io.File
+
 import de.sciss.dsp.ConstQ
-import de.sciss.synth.io.{AudioFile, Frames}
-import de.sciss.sonogram.ResourceManager.{Image, ImageSpec}
-import de.sciss.model.impl.ModelImpl
 import de.sciss.filecache
+import de.sciss.model.impl.ModelImpl
+import de.sciss.sonogram.ResourceManager.{Image, ImageSpec}
+import de.sciss.synth.io.{AudioFile, Frames}
 
 private object OverviewManagerImpl {
-  private final class ConstQCache(val constQ: ConstQ) {
-    var useCount = 0
-  }
+//  private final class ConstQCache(val constQ: ConstQ) {
+//    var useCount = 0
+//  }
 
   private final class FileBufCache(val buf: Frames) {
     var useCount = 0
@@ -42,10 +43,10 @@ private object OverviewManagerImpl {
 private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Config)
   extends OverviewManager with ModelImpl[OverviewManager.Update] with ResourceManager {
 
-  import OverviewManager._
-  import OverviewManagerImpl._
   import Overview.{Config => OvrSpec, Output => OvrOut}
   import OverviewImpl.debug
+  import OverviewManager._
+  import OverviewManagerImpl._
 
   //  /** Creates the file for the overview cache meta data. It should have a filename extension,
   //    * and the manager will store the overview binary data in a file with the same prefix but
@@ -56,7 +57,7 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
   //  protected def createCacheFile(path: File): File
 
   /** This is a constant, but can be overridden by subclasses. */
-  protected val decimation  = List(1, 6, 6, 6, 6)
+  protected val decimation: List[Int] = List(1, 6, 6, 6, 6)
 
   // private var constQCache   = Map.empty[SonogramSpec, ConstQCache]
   private var imageCache    = Map.empty[(Int, Int), ImageCache]
@@ -74,12 +75,12 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
       debug(s"accept ${spec.file.lastModified()} == ${out.input.lastModified} && $specAF == ${out.input.fileSpec}")
       spec.file.lastModified() == out.input.lastModified && specAF == out.input.fileSpec
     }
-    cc.space      = { (spec: OvrSpec, out: OvrOut) =>
+    cc.space      = { (_: OvrSpec, out: OvrOut) =>
       val res = out.output.length()
       debug(s"space of $out is $res")
       res
     }
-    cc.evict      = { (spec: OvrSpec, out: OvrOut) =>
+    cc.evict      = { (_: OvrSpec, out: OvrOut) =>
       debug(s"evict $out")
       out.output.delete()
     }
