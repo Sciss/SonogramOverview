@@ -1,20 +1,20 @@
 lazy val baseName  = "SonogramOverview"
 lazy val baseNameL = baseName.toLowerCase
 
-lazy val projectVersion = "1.11.0"
+lazy val projectVersion = "1.11.1"
 lazy val mimaVersion    = "1.11.0"
 
 lazy val deps = new {
   val main = new {
-    val audioFile        = "1.5.1"
-    val dsp              = "1.3.1"
+    val audioFile        = "1.5.3"
+    val dsp              = "1.3.2"
     val intensityPalette = "1.0.0"
     val processor        = "0.4.2"
-    val fileCache        = "0.5.0"
+    val fileCache        = "0.5.1"
     val span             = "1.4.2"
   }
   val test = new {
-    val desktop          = "0.10.0"
+    val desktop          = "0.10.3"
   }
 }
 
@@ -27,8 +27,8 @@ lazy val root = project.withId(baseNameL).in(file("."))
     description  := "Sonogram view component for Scala/Swing, calculating offline from audio files",
     homepage     := Some(url(s"https://git.iem.at/sciss/${name.value}")),
     licenses     := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt")),
-    scalaVersion := "2.13.0-M5",
-    crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0-M5"),
+    scalaVersion := "2.12.8",
+    crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0-RC1"),
     mimaPreviousArtifacts := Set("de.sciss" %% baseNameL % mimaVersion),
     libraryDependencies ++= Seq(
       "de.sciss" %% "audiofile"         % deps.main.audioFile,
@@ -39,7 +39,7 @@ lazy val root = project.withId(baseNameL).in(file("."))
       "de.sciss" %% "span"              % deps.main.span,
       "de.sciss" %% "desktop"           % deps.test.desktop % Test
     ),
-    scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xfuture", "-encoding", "utf8", "-Xlint"),
+    scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint", "-Xsource:2.13"),
     scalacOptions ++= Seq("-Xelide-below", "INFO"),     // elide debug logging!
     // ---- build info ----
     buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
