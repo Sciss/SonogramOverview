@@ -15,10 +15,13 @@ package de.sciss.sonogram
 
 import java.awt.FileDialog
 import java.io.File
+
 import de.sciss.dsp.Util
+
 import util.control.NonFatal
-import de.sciss.desktop.impl.{WindowImpl, SwingApplicationImpl}
-import de.sciss.desktop.{Window, KeyStrokes, Menu}
+import de.sciss.desktop.impl.{SwingApplicationImpl, WindowImpl}
+import de.sciss.desktop.{KeyStrokes, Menu, Window, WindowHandler}
+
 import scala.swing._
 import scala.swing.event.{Key, ValueChanged}
 import Swing._
@@ -46,7 +49,7 @@ object Demo extends SwingApplicationImpl("Demo") {
     import KeyStrokes._
 
     val groupPalette = Menu.Group("palette", "Palette")
-    palettes.zipWithIndex.foreach { case ((name0, fun), idx) =>
+    palettes.zipWithIndex.foreach { case ((name0, _ /*fun*/), idx) =>
       val item = Menu.Item(s"palette-$idx", name0 -> (menu1 + Key(Key.Key0.id + idx)))
       groupPalette.add(item)
     }
@@ -60,7 +63,7 @@ object Demo extends SwingApplicationImpl("Demo") {
       .add(groupPalette)
   }
 
-  val mgr = {
+  val mgr: OverviewManager = {
     val cfg = OverviewManager.Config()
     if (useCache) {
       val folder  = new File(sys.props("java.io.tmpdir"), "sono_demo")
@@ -103,7 +106,7 @@ object Demo extends SwingApplicationImpl("Demo") {
       }
 
       new WindowImpl {
-        def handler = windowHandler
+        def handler: WindowHandler = windowHandler
 
         title     = f.getName
         file      = Some(f)
@@ -112,7 +115,7 @@ object Demo extends SwingApplicationImpl("Demo") {
           add(ggBoost, BorderPanel.Position.East)
         }
 
-        bindMenus(palettes.zipWithIndex.map { case ((name0, fun), idx) =>
+        bindMenus(palettes.zipWithIndex.map { case ((_ /*name0*/, fun), idx) =>
           val key = s"palette.palette-$idx"
           val action = Action(null) {
             ov.palette = fun
