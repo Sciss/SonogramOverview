@@ -1,7 +1,7 @@
 lazy val baseName  = "SonogramOverview"
 lazy val baseNameL = baseName.toLowerCase
 
-lazy val projectVersion = "1.11.1"
+lazy val projectVersion = "1.11.2-SNAPSHOT"
 lazy val mimaVersion    = "1.11.0"
 
 lazy val deps = new {

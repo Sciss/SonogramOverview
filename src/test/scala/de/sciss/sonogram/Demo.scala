@@ -127,7 +127,7 @@ object Demo extends SwingApplicationImpl("Demo") {
         size = (800, 300)
         // f.setLocationRelativeTo(null)
 
-        closeOperation = Window.CloseIgnore
+        closeOperation = Window.CloseExit
         reactions += {
           case Window.Closing(_) =>
             dispose()
@@ -142,5 +142,11 @@ object Demo extends SwingApplicationImpl("Demo") {
     }
   }
 
-  override def init(): Unit = openDialog()
+  override def init(): Unit = {
+    if (args.length >= 2 && args(0) == "-o") {
+      open(new File(args(1)))
+    } else {
+      openDialog()
+    }
+  }
 }
