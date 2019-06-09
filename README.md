@@ -1,7 +1,7 @@
 # SonogramOverview
 
 [![Build Status](https://travis-ci.org/Sciss/SonogramOverview.svg?branch=master)](https://travis-ci.org/Sciss/SonogramOverview)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/sonogramoverview_2.11/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/sonogramoverview_2.11)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/sonogramoverview_2.12/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/sonogramoverview_2.12)
 
 ## statement
 
@@ -15,11 +15,11 @@ To use this library in your project:
 
     "de.sciss" %% "sonogramoverview" % v
 
-The current version `v` is `"1.11.1"`.
+The current version `v` is `"1.11.2"`.
 
 ## building
 
-Compiles against Scala 2.12, 2.11, and builds with sbt.
+Compiles against Scala 2.13, 2.12, 2.11, and builds with sbt.
 
 ## demo
 

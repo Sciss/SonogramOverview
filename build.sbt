@@ -1,7 +1,7 @@
 lazy val baseName  = "SonogramOverview"
 lazy val baseNameL = baseName.toLowerCase
 
-lazy val projectVersion = "1.11.2-SNAPSHOT"
+lazy val projectVersion = "1.11.2"
 lazy val mimaVersion    = "1.11.0"
 
 lazy val deps = new {
@@ -14,7 +14,7 @@ lazy val deps = new {
     val span             = "1.4.2"
   }
   val test = new {
-    val desktop          = "0.10.3"
+    val desktop          = "0.10.4"
   }
 }
 
@@ -28,7 +28,7 @@ lazy val root = project.withId(baseNameL).in(file("."))
     homepage     := Some(url(s"https://git.iem.at/sciss/${name.value}")),
     licenses     := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt")),
     scalaVersion := "2.12.8",
-    crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0-RC2"),
+    crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0"),
     mimaPreviousArtifacts := Set("de.sciss" %% baseNameL % mimaVersion),
     libraryDependencies ++= Seq(
       "de.sciss" %% "audiofile"         % deps.main.audioFile,
