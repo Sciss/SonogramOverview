@@ -2,7 +2,7 @@
  *  Overview.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2020 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -19,21 +19,19 @@ import java.io.File
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.model.Model
 import de.sciss.processor.{Processor, ProcessorLike}
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, DataOutput, ConstFormat}
 import de.sciss.synth.io.AudioFileSpec
 
 object Overview {
   private final val COOKIE = 0x4F56
 
   object Config {
-    implicit object Serializer extends ImmutableSerializer[Config] {
+    implicit object format extends ConstFormat[Config] {
       def write(v: Config, out: DataOutput): Unit = {
         import v._
         out.writeShort(COOKIE)
         out.writeUTF(file.getCanonicalPath)
-        //        AudioFileSpec.Serializer.write(fileSpec, out)
-        //        out.writeLong(lastModified)
-        SonogramSpec.Serializer.write(sonogram, out)
+        SonogramSpec.format.write(sonogram, out)
         out.writeShort(decimation.size)
         decimation.foreach(out.writeShort)
       }
@@ -42,9 +40,7 @@ object Overview {
         val cookie = in.readShort()
         require(cookie == COOKIE, s"Unexpected cookie $cookie")
         val file          = new File(in.readUTF())
-        //        val fileSpec      = AudioFileSpec.Serializer.read(in)
-        //        val lastModified  = in.readLong()
-        val sonogram      = SonogramSpec.Serializer.read(in)
+        val sonogram      = SonogramSpec.format.read(in)
         val numDecim      = in.readShort()
         val decimation    = List.fill(numDecim)(in.readShort().toInt)
         Config(file, /* fileSpec, lastModified, */ sonogram, decimation)
@@ -61,18 +57,18 @@ object Overview {
                           decimation: List[Int])
 
   object Input {
-    implicit object Serializer extends ImmutableSerializer[Input] {
+    implicit object format extends ConstFormat[Input] {
       def write(v: Input, out: DataOutput): Unit = {
         import v._
         out.writeShort(COOKIE)
-        AudioFileSpec.Serializer.write(fileSpec, out)
+        AudioFileSpec.format.write(fileSpec, out)
         out.writeLong(lastModified)
       }
 
       def read(in: DataInput): Input = {
         val cookie = in.readShort()
         require(cookie == COOKIE, s"Unexpected cookie $cookie")
-        val fileSpec      = AudioFileSpec.Serializer.read(in)
+        val fileSpec      = AudioFileSpec.format.read(in)
         val lastModified  = in.readLong()
         Input(fileSpec, lastModified)
       }
@@ -81,18 +77,18 @@ object Overview {
   final case class Input(fileSpec: AudioFileSpec, lastModified: Long)
 
   object Output {
-    implicit object Serializer extends ImmutableSerializer[Output] {
+    implicit object format extends ConstFormat[Output] {
       def write(v: Output, out: DataOutput): Unit = {
         import v._
         out.writeShort(COOKIE)
-        Input.Serializer.write(input, out)
+        Input.format.write(input, out)
         out.writeUTF(output.getPath)
       }
 
       def read(in: DataInput): Output = {
         val cookie = in.readShort()
         require(cookie == COOKIE, s"Unexpected cookie $cookie")
-        val input   = Input.Serializer.read(in)
+        val input   = Input.format.read(in)
         val output  = new File(in.readUTF())
         Output(input, output)
       }

@@ -91,7 +91,7 @@ object Demo extends SwingApplicationImpl("Demo") {
       //      }
       val view    = new SonogramComponent
       view.boost  = 4f
-      view.sono   = Some(ov)
+      view.sonogram   = Some(ov)
       val ggBoost = new Slider {
         orientation = Orientation.Vertical
         min         = 0

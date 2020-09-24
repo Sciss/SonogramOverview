@@ -2,7 +2,7 @@
  *  OverviewManager.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2020 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -18,7 +18,7 @@ import java.io.File
 
 import de.sciss.dsp.ConstQ
 import de.sciss.model.Model
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, DataOutput, ConstFormat}
 import de.sciss.sonogram.impl.{OverviewManagerImpl => Impl}
 
 import scala.concurrent.ExecutionContext
@@ -27,21 +27,21 @@ import scala.util.Try
 
 object OverviewManager {
   object Job {
-    implicit object Serializer extends ImmutableSerializer[Job] {
+    implicit object format extends ConstFormat[Job] {
       private final val COOKIE = 0x4a6f
 
       def write(v: Job, out: DataOutput): Unit = {
         import v._
         out.writeShort(COOKIE)
         out.writeUTF(file.getPath)
-        ConstQ.Config.Serializer.write(analysis, out)
+        ConstQ.Config.format.write(analysis, out)
       }
 
       def read(in: DataInput): Job = {
         val cookie = in.readShort()
         require(cookie == COOKIE, s"Unexpected cookie $cookie")
         val file      = new File(in.readUTF())
-        val analysis  = ConstQ.Config.Serializer.read(in)
+        val analysis  = ConstQ.Config.format.read(in)
         new Job(file = file, analysis = analysis)
       }
     }

@@ -1,20 +1,20 @@
 lazy val baseName  = "SonogramOverview"
 lazy val baseNameL = baseName.toLowerCase
 
-lazy val projectVersion = "1.11.2"
-lazy val mimaVersion    = "1.11.0"
+lazy val projectVersion = "2.0.0-SNAPSHOT"
+lazy val mimaVersion    = "2.0.0"
 
 lazy val deps = new {
   val main = new {
-    val audioFile        = "1.5.3"
-    val dsp              = "1.3.2"
-    val intensityPalette = "1.0.0"
-    val processor        = "0.4.2"
-    val fileCache        = "0.5.1"
-    val span             = "1.4.2"
+    val audioFile        = "2.0.0-SNAPSHOT"
+    val dsp              = "2.0.0-SNAPSHOT"
+    val intensityPalette = "1.0.2"
+    val processor        = "0.4.3"
+    val fileCache        = "1.0.0-SNAPSHOT"
+    val span             = "2.0.0-SNAPSHOT"
   }
   val test = new {
-    val desktop          = "0.10.4"
+    val desktop          = "0.10.7"
   }
 }
 
@@ -27,8 +27,8 @@ lazy val root = project.withId(baseNameL).in(file("."))
     description  := "Sonogram view component for Scala/Swing, calculating offline from audio files",
     homepage     := Some(url(s"https://git.iem.at/sciss/${name.value}")),
     licenses     := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt")),
-    scalaVersion := "2.12.8",
-    crossScalaVersions := Seq("2.12.8", "2.11.12", "2.13.0"),
+    scalaVersion := "2.13.3",
+    crossScalaVersions := Seq("2.13.3", "2.12.12"),
     mimaPreviousArtifacts := Set("de.sciss" %% baseNameL % mimaVersion),
     libraryDependencies ++= Seq(
       "de.sciss" %% "audiofile"         % deps.main.audioFile,

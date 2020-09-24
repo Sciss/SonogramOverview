@@ -2,7 +2,7 @@
  *  SonogramSpec.scala
  *  (Overview)
  *
- *  Copyright (c) 2010-2019 Hanns Holger Rutz. All rights reserved.
+ *  Copyright (c) 2010-2020 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
  *
@@ -14,10 +14,10 @@
 package de.sciss.sonogram
 
 import de.sciss.dsp.ConstQ
-import de.sciss.serial.{DataInput, DataOutput, ImmutableSerializer}
+import de.sciss.serial.{DataInput, DataOutput, ConstFormat}
 
 object SonogramSpec {
-  implicit object Serializer extends ImmutableSerializer[SonogramSpec] {
+  implicit object format extends ConstFormat[SonogramSpec] {
     private val COOKIE = 0
 
     def write(v: SonogramSpec, out: DataOutput): Unit = {
