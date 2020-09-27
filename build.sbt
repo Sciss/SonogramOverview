@@ -6,12 +6,12 @@ lazy val mimaVersion    = "2.0.0"
 
 lazy val deps = new {
   val main = new {
-    val audioFile        = "2.0.0-SNAPSHOT"
-    val dsp              = "2.0.0-SNAPSHOT"
+    val audioFile        = "2.0.0"
+    val dsp              = "2.0.0"
     val intensityPalette = "1.0.2"
     val processor        = "0.4.3"
     val fileCache        = "1.0.0-SNAPSHOT"
-    val span             = "2.0.0-SNAPSHOT"
+    val span             = "2.0.0"
   }
   val test = new {
     val desktop          = "0.10.7"
