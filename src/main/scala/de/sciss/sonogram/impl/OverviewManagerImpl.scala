@@ -1,7 +1,7 @@
 /*
  *  OverviewManagerImpl.scala
- *  (Overview)
- *
+ *  (SonogramOverview)
+*
  *  Copyright (c) 2010-2020 Hanns Holger Rutz. All rights reserved.
  *
  *	This software is published under the GNU Lesser General Public License v2.1+
@@ -69,18 +69,18 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
 
   private val producer = {
     val cc = filecache.Config[OvrSpec, OvrOut]()
-    cc.extension  = "sono"
-    cc.accept     = { (spec: OvrSpec, out: OvrOut) =>
+    cc.fileExtension = "sono"
+    cc.accept = { (spec: OvrSpec, out: OvrOut) =>
       val specAF = AudioFile.readSpec(spec.file)
       debug(s"accept ${spec.file.lastModified()} == ${out.input.lastModified} && $specAF == ${out.input.fileSpec}")
       spec.file.lastModified() == out.input.lastModified && specAF == out.input.fileSpec
     }
-    cc.space      = { (_: OvrSpec, out: OvrOut) =>
+    cc.space = { (_: OvrSpec, out: OvrOut) =>
       val res = out.output.length()
       debug(s"space of $out is $res")
       res
     }
-    cc.evict      = { (_: OvrSpec, out: OvrOut) =>
+    cc.evict = { (_: OvrSpec, out: OvrOut) =>
       debug(s"evict $out")
       out.output.delete()
     }

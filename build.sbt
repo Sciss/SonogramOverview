@@ -1,7 +1,7 @@
 lazy val baseName  = "SonogramOverview"
 lazy val baseNameL = baseName.toLowerCase
 
-lazy val projectVersion = "2.0.0-SNAPSHOT"
+lazy val projectVersion = "2.0.0"
 lazy val mimaVersion    = "2.0.0"
 
 lazy val deps = new {
@@ -10,7 +10,7 @@ lazy val deps = new {
     val dsp              = "2.0.0"
     val intensityPalette = "1.0.2"
     val processor        = "0.4.3"
-    val fileCache        = "1.0.0-SNAPSHOT"
+    val fileCache        = "1.0.0"
     val span             = "2.0.0"
   }
   val test = new {
