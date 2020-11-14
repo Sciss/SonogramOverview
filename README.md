@@ -8,7 +8,7 @@
 An offline sonogram swing component for the Scala programming language.
 
 (C)opyright 2010&ndash;2020 by Hanns Holger Rutz. All rights reserved. It is released under
- the [GNU Lesser General Public License](https://raw.github.com/Sciss/SonogramOverview/main/LICENSE) v2.1+ and 
+ the [GNU Affero General Public License](https://raw.github.com/Sciss/SonogramOverview/main/LICENSE) v3+ and 
  comes with absolutely no warranties. To contact the author, send an email to `contact at sciss.de`. SonogramOverview 
  is based on the `AudioFile` class of [AudioFile](http://github.com/Sciss/AudioFile) and the Constant-Q spectral 
  transform of [ScissDSP](http://github.com/Sciss/ScissDSP).
@@ -19,11 +19,12 @@ To use this library in your project:
 
     "de.sciss" %% "sonogramoverview" % v
 
-The current version `v` is `"2.0.0"`.
+The current version `v` is `"2.1.0"`.
 
 ## building
 
-Compiles against Scala 2.13, 2.12, and builds with sbt. The last version to support Scala 2.11 was v1.11.2.
+This project builds with sbt against Scala 2.13, 2.12, Dotty.
+The last version to support Scala 2.11 was v1.11.2.
 
 ## demo
 

@@ -4,7 +4,7 @@
 *
  *  Copyright (c) 2010-2020 Hanns Holger Rutz. All rights reserved.
  *
- *	This software is published under the GNU Lesser General Public License v2.1+
+ *	This software is published under the GNU Affero General Public License v3+
  *
  *
  *	For further information, please contact Hanns Holger Rutz at
@@ -15,8 +15,8 @@ package de.sciss.sonogram
 
 import java.awt.image.BufferedImage
 
+import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.dsp.ConstQ
-import de.sciss.synth.io.Frames
 
 object ResourceManager {
   final case class ImageSpec(numChannels: Int, width: Int, height: Int)

@@ -4,7 +4,7 @@
 *
  *  Copyright (c) 2010-2020 Hanns Holger Rutz. All rights reserved.
  *
- *	This software is published under the GNU Lesser General Public License v2.1+
+ *	This software is published under the GNU Affero General Public License v3+
  *
  *
  *	For further information, please contact Hanns Holger Rutz at
@@ -24,7 +24,7 @@ import de.sciss.filecache.MutableProducer
 import de.sciss.processor.impl.ProcessorImpl
 import de.sciss.sonogram.Overview.{Config => OvrSpec, Input => OvrIn, Output => OvrOut}
 import de.sciss.sonogram.ResourceManager.ImageSpec
-import de.sciss.synth.io.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
+import de.sciss.audiofile.{AudioFile, AudioFileSpec, AudioFileType, SampleFormat}
 
 import scala.annotation.elidable
 import scala.concurrent.duration.Duration
@@ -235,7 +235,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
                 }
                 val amp = ctrl.adjustGain(sum / (vDecim * ehd), (iOff + xOff) / hScale)
                 val v   = (l10.calc(math.max(1.0e-9f, amp)) + pixOff) * pixScale
-                iBuf(iOff) = p(v) // IntensityPalette.apply()
+                iBuf(iOff) = p(v.toFloat) // IntensityPalette.apply()
                 y    += 1
                 iOff -= imgW
               }
@@ -295,7 +295,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
   private def generate(): OvrOut = blocking {
     debug("enter body")
     val constQ = manager.allocateConstQ(config.sonogram)
-    // val fftSize = constQ.getFFTSize
+    // val fftSize = constQ.getFFTSize
     // val t1 = System.currentTimeMillis
     var daf: AudioFile = null
     val f = File.createTempFile("sono", ".w64", producer.config.folder)
@@ -366,6 +366,8 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
     val stepSize    = config.sonogram.stepSize
     val inBuf       = Array.ofDim[Float](numChannels, fftSize)
     val outBuf      = Array.ofDim[Float](numChannels, numKernels)
+    val inBufD      = new Array[Double](fftSize)
+    val outBufD     = new Array[Double](numKernels)
 
     var inOff       = fftSize / 2
     var inLen       = fftSize - inOff
@@ -392,7 +394,19 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
       ch = 0
       while (ch < numChannels) {
         // input, inOff, inLen, output, outOff
-        constQ.transform(inBuf(ch), fftSize, outBuf(ch), 0, 0)
+        var i = 0
+        val inBufCh = inBuf(ch)
+        while (i < fftSize) {
+          inBufD(i) = inBufCh(i).toDouble
+          i += 1
+        }
+        constQ.transform(inBufD, fftSize, outBufD, 0, 0)
+        i = 0
+        val outBufCh = outBuf(ch)
+        while (i < numKernels) {
+          outBufCh(i) = outBufD(i).toFloat
+          i += 1
+        }
         ch += 1
       }
 

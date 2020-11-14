@@ -1,20 +1,20 @@
 lazy val baseName  = "SonogramOverview"
 lazy val baseNameL = baseName.toLowerCase
 
-lazy val projectVersion = "2.0.0"
-lazy val mimaVersion    = "2.0.0"
+lazy val projectVersion = "2.1.0"
+lazy val mimaVersion    = "2.1.0"
 
 lazy val deps = new {
   val main = new {
-    val audioFile        = "2.0.0"
-    val dsp              = "2.0.0"
+    val audioFile        = "2.2.0"
+    val dsp              = "2.1.0"
     val intensityPalette = "1.0.2"
-    val processor        = "0.4.3"
-    val fileCache        = "1.0.0"
+    val processor        = "0.5.0"
+    val fileCache        = "1.1.0"
     val span             = "2.0.0"
   }
   val test = new {
-    val desktop          = "0.10.7"
+    val desktop          = "0.11.1"
   }
 }
 
@@ -26,9 +26,9 @@ lazy val root = project.withId(baseNameL).in(file("."))
     organization := "de.sciss",
     description  := "Sonogram view component for Scala/Swing, calculating offline from audio files",
     homepage     := Some(url(s"https://git.iem.at/sciss/${name.value}")),
-    licenses     := Seq("LGPL v2.1+" -> url("http://www.gnu.org/licenses/lgpl-2.1.txt")),
+    licenses     := Seq("AGPL v3+" -> url("http://www.gnu.org/licenses/agpl-3.0.txt")),
     scalaVersion := "2.13.3",
-    crossScalaVersions := Seq("2.13.3", "2.12.12"),
+    crossScalaVersions := Seq("3.0.0-M1", "2.13.3", "2.12.12"),
     mimaPreviousArtifacts := Set("de.sciss" %% baseNameL % mimaVersion),
     libraryDependencies ++= Seq(
       "de.sciss" %% "audiofile"         % deps.main.audioFile,
@@ -40,7 +40,7 @@ lazy val root = project.withId(baseNameL).in(file("."))
       "de.sciss" %% "desktop"           % deps.test.desktop % Test
     ),
     scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-encoding", "utf8", "-Xlint", "-Xsource:2.13"),
-    scalacOptions ++= Seq("-Xelide-below", "INFO"),     // elide debug logging!
+    scalacOptions ++= { if (isDotty.value) Nil else Seq("-Xelide-below", "INFO")},     // elide debug logging!
     // ---- build info ----
     buildInfoKeys := Seq(name, organization, version, scalaVersion, description,
       BuildInfoKey.map(homepage) { case (k, opt) => k -> opt.get },

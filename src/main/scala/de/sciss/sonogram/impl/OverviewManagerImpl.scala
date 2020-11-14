@@ -4,7 +4,7 @@
 *
  *  Copyright (c) 2010-2020 Hanns Holger Rutz. All rights reserved.
  *
- *	This software is published under the GNU Lesser General Public License v2.1+
+ *	This software is published under the GNU Affero General Public License v3+
  *
  *
  *	For further information, please contact Hanns Holger Rutz at
@@ -17,11 +17,12 @@ package impl
 import java.awt.image.BufferedImage
 import java.io.File
 
+import de.sciss.audiofile.AudioFile
+import de.sciss.audiofile.AudioFile.Frames
 import de.sciss.dsp.ConstQ
 import de.sciss.filecache
 import de.sciss.model.impl.ModelImpl
 import de.sciss.sonogram.ResourceManager.{Image, ImageSpec}
-import de.sciss.synth.io.{AudioFile, Frames}
 
 private object OverviewManagerImpl {
 //  private final class ConstQCache(val constQ: ConstQ) {

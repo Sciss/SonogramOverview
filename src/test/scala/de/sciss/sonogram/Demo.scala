@@ -27,7 +27,7 @@ import scala.swing.event.{Key, ValueChanged}
 import Swing._
 
 object Demo extends SwingApplicationImpl("Demo") {
-  import Util.dbamp
+  import Util.dbAmp
 
   def useCache = false
 
@@ -100,7 +100,7 @@ object Demo extends SwingApplicationImpl("Demo") {
 
         listenTo(this)
         reactions += {
-          case ValueChanged(_) => view.boost = dbamp(value * 0.1).toFloat
+          case ValueChanged(_) => view.boost = dbAmp(value * 0.1).toFloat
         }
         peer.putClientProperty("JComponent.sizeVariant", "small")
       }

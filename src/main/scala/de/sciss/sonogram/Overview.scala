@@ -4,7 +4,7 @@
 *
  *  Copyright (c) 2010-2020 Hanns Holger Rutz. All rights reserved.
  *
- *	This software is published under the GNU Lesser General Public License v2.1+
+ *	This software is published under the GNU Affero General Public License v3+
  *
  *
  *	For further information, please contact Hanns Holger Rutz at
@@ -16,11 +16,11 @@ package de.sciss.sonogram
 import java.awt.Graphics2D
 import java.io.File
 
+import de.sciss.audiofile.AudioFileSpec
 import de.sciss.intensitypalette.IntensityPalette
 import de.sciss.model.Model
 import de.sciss.processor.{Processor, ProcessorLike}
-import de.sciss.serial.{DataInput, DataOutput, ConstFormat}
-import de.sciss.synth.io.AudioFileSpec
+import de.sciss.serial.{ConstFormat, DataInput, DataOutput}
 
 object Overview {
   private final val COOKIE = 0x4F56
