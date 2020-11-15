@@ -233,7 +233,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
                   fOff += 1
                   vdi  += 1
                 }
-                val amp = ctrl.adjustGain(sum / (vDecim * ehd), (iOff + xOff) / hScale)
+                val amp = ctrl.adjustGain(sum.toFloat / (vDecim * ehd), (iOff + xOff) / hScale)
                 val v   = (l10.calc(math.max(1.0e-9f, amp)) + pixOff) * pixScale
                 iBuf(iOff) = p(v.toFloat) // IntensityPalette.apply()
                 y    += 1
@@ -364,10 +364,8 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
     debug("enter primaryRender")
     val fftSize     = constQ.fftSize
     val stepSize    = config.sonogram.stepSize
-    val inBuf       = Array.ofDim[Float](numChannels, fftSize)
-    val outBuf      = Array.ofDim[Float](numChannels, numKernels)
-    val inBufD      = new Array[Double](fftSize)
-    val outBufD     = new Array[Double](numKernels)
+    val inBuf       = Array.ofDim[Double](numChannels, fftSize)
+    val outBuf      = Array.ofDim[Double](numChannels, numKernels)
 
     var inOff       = fftSize / 2
     var inLen       = fftSize - inOff
@@ -394,19 +392,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
       ch = 0
       while (ch < numChannels) {
         // input, inOff, inLen, output, outOff
-        var i = 0
-        val inBufCh = inBuf(ch)
-        while (i < fftSize) {
-          inBufD(i) = inBufCh(i).toDouble
-          i += 1
-        }
-        constQ.transform(inBufD, fftSize, outBufD, 0, 0)
-        i = 0
-        val outBufCh = outBuf(ch)
-        while (i < numKernels) {
-          outBufCh(i) = outBufD(i).toFloat
-          i += 1
-        }
+        constQ.transform(inBuf(ch), fftSize, outBuf(ch), 0, 0)
         ch += 1
       }
 
@@ -438,7 +424,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
     debug(s"enter secondaryRender ${in.decimFactor}")
     val dec         = out.decimFactor
     val bufSize     = dec * numKernels
-    val buf         = Array.ofDim[Float](numChannels, bufSize)
+    val buf         = Array.ofDim[Double](numChannels, bufSize)
     // since dec is supposed to be even, this
     // lands on the beginning of a kernel:
     var inOff       = bufSize / 2
@@ -468,7 +454,7 @@ private[sonogram] final class OverviewImpl(val config: OvrSpec, input: OvrIn,
         val convBuf = buf(ch)
         var i = 0
         while (i < numKernels) {
-          var sum = 0f
+          var sum = 0.0
           var j = i
           while (j < bufSize) {
             sum += convBuf(j)

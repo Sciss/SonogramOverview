@@ -19,7 +19,7 @@ To use this library in your project:
 
     "de.sciss" %% "sonogramoverview" % v
 
-The current version `v` is `"2.1.0"`.
+The current version `v` is `"2.2.0"`.
 
 ## building
 

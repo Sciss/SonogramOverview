@@ -202,9 +202,9 @@ private[sonogram] final class OverviewManagerImpl(val config: OverviewManager.Co
     entry.img
   }
 
-  private def allocateFileBuf(spec: ImageSpec): Array[Array[Float]] = sync.synchronized {
+  private def allocateFileBuf(spec: ImageSpec): Frames = sync.synchronized {
     val entry = fileBufCache.getOrElse(spec, {
-      val res = new FileBufCache(Array.ofDim[Float](spec.numChannels, spec.width * spec.height))
+      val res = new FileBufCache(Array.ofDim[Double](spec.numChannels, spec.width * spec.height))
       fileBufCache += spec -> res
       res
     })
