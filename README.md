@@ -1,6 +1,6 @@
 # SonogramOverview
 
-[![Build Status](https://travis-ci.org/Sciss/SonogramOverview.svg?branch=main)](https://travis-ci.org/Sciss/SonogramOverview)
+[![Build Status](https://github.com/Sciss/SonogramOverview/workflows/Scala%20CI/badge.svg?branch=main)](https://github.com/Sciss/SonogramOverview/actions?query=workflow%3A%22Scala+CI%22)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/de.sciss/sonogramoverview_2.13/badge.svg)](https://maven-badges.herokuapp.com/maven-central/de.sciss/sonogramoverview_2.13)
 
 ## statement
@@ -19,7 +19,7 @@ To use this library in your project:
 
     "de.sciss" %% "sonogramoverview" % v
 
-The current version `v` is `"2.2.0"`.
+The current version `v` is `"2.2.1"`.
 
 ## building
 
